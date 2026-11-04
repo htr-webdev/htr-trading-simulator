@@ -1,6 +1,6 @@
 # HTR Trading Simulator
 
-A historical cryptocurrency market replay and paper trading platform designed to help users analyze market movements, practice trading strategies, and simulate trades using historical market data — without risking real money.
+A historical cryptocurrency market replay and paper trading platform designed to help traders analyze market movements, practice trading strategies, and evaluate trading decisions using historical market data — without risking real money.
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -9,31 +9,185 @@ A historical cryptocurrency market replay and paper trading platform designed to
 ![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)
 
-## Features
+## Overview
 
-- Historical cryptocurrency market replay.
+HTR Trading Simulator is a web-based platform for replaying historical cryptocurrency market data and practicing trading in a simulated environment.
+
+The project aims to provide a trading terminal inspired by professional trading platforms, allowing users to explore historical price movements, control market playback, analyze candlestick charts, and manage simulated trading positions.
+
+All trading activities are simulated. The platform does not execute real orders or risk real funds.
+
+## Planned Features
+
+- Historical cryptocurrency market data.
 - Interactive candlestick charts.
-- Adjustable replay speed and playback controls.
-- Dynamic chart timeframes.
-- Virtual trading and position management.
+- Date-based market replay.
+- Adjustable playback speed and playback controls.
+- Dynamic timeframe aggregation from historical minute data.
+- Simulated trading and position management.
 - Stop Loss and Take Profit.
 - Chart drawing tools for technical analysis.
+- Market Watch and trading terminal interface.
+
+_These features are part of the project roadmap and are being developed incrementally._
+
+## Technology Stack
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- TradingView Lightweight Charts (planned)
+- Tailwind CSS (planned)
+
+### Backend
+
+- Node.js
+- Fastify
+- TypeScript
+
+### Shared & Infrastructure
+
+- npm Workspaces
+- TypeScript shared packages
+- ESLint
+- SQLite (planned)
+- Vitest (planned)
+
+## Project Architecture
+
+The project uses a modular monorepo architecture with separate workspaces for the frontend, backend, and shared code.
+
+```text
+htr-trading-simulator/
+├── apps/
+│   ├── frontend/       # React application
+│   └── backend/        # Fastify API server
+│
+├── packages/
+│   └── shared/         # Shared types and definitions
+│
+├── package.json
+├── package-lock.json
+├── tsconfig.base.json
+└── README.md
+```
+
+Each workspace has its own responsibilities while shared types and definitions are maintained in a central package.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 22 or later
+- npm
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/htr-webdev/htr-trading-simulator.git
+cd htr-trading-simulator
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+### Development
+
+Start the frontend:
+
+```bash
+npm run dev:frontend
+```
+
+Start the backend in a separate terminal:
+
+```bash
+npm run dev:backend
+```
+
+The frontend is served by Vite, while the backend runs on:
+
+```text
+http://127.0.0.1:3000
+```
+
+Check the backend health endpoint:
+
+```text
+http://127.0.0.1:3000/health
+```
+
+### Build
+
+Build all workspaces:
+
+```bash
+npm run build
+```
+
+The build process runs in the following order:
+
+1. Shared
+2. Backend
+3. Frontend
+
+### Code Quality
+
+Run ESLint across all workspaces:
+
+```bash
+npm run lint
+```
+
+## Roadmap
+
+Development is organized into two main phases.
+
+### Phase 1 — Project Foundation & Initial Chart
+
+- [x] Initialize repository and project documentation.
+- [x] Establish modular project architecture.
+- [ ] Implement historical market data downloader.
+- [ ] Implement local market data storage.
+- [ ] Build the initial trading terminal interface.
+- [ ] Implement the historical candlestick chart.
+
+### Phase 2 — Market Replay & Trading Simulation
+
+- [ ] Implement the historical market replay engine.
+- [ ] Implement dynamic timeframe aggregation.
+- [ ] Implement paper trading and position management.
+- [ ] Implement Stop Loss and Take Profit.
+- [ ] Implement chart drawing tools.
 
 ## Project Status
 
-Early Development — Version 0.1.0
+**Version:** 0.1.0
+
+**Development Stage:** Early Development
+
+The project is currently focused on establishing its modular architecture and building the foundation for historical market data processing and chart visualization.
+
+Features will be introduced incrementally as development progresses.
 
 ## License
 
-MIT
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Author
 
 **Habib Mirzaei**
 
-- GitHub: https://github.com/htr-webdev
-- LinkedIn: https://www.linkedin.com/in/habib-mirzaei1995/
+- GitHub: [htr-webdev](https://github.com/htr-webdev)
+- LinkedIn: [Habib Mirzaei](https://www.linkedin.com/in/habib-mirzaei1995/)
 
 ## Repository
 
-https://github.com/htr-webdev/htr-trading-simulator
+[https://github.com/htr-webdev/htr-trading-simulator](https://github.com/htr-webdev/htr-trading-simulator)
