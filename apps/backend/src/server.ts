@@ -1,10 +1,11 @@
 import Fastify from "fastify";
+import type { HealthResponse } from "@htr-trading-simulator/shared";
 
 const server = Fastify({
   logger: true,
 });
 
-server.get("/health", async () => {
+server.get<{ Reply: HealthResponse }>("/health", async () => {
   return {
     status: "ok",
     service: "HTR Trading Simulator API",

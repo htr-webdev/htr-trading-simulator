@@ -24,7 +24,7 @@
     "build:shared": "npm run build --workspace=@htr-trading-simulator/shared",
     "build:backend": "npm run build --workspace=@htr-trading-simulator/backend",
     "build:frontend": "npm run build --workspace=frontend",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=@htr-trading-simulator/backend && npm run lint --workspace=@htr-trading-simulator/shared",
     "test": "npm run test --workspaces --if-present"
   }
 }

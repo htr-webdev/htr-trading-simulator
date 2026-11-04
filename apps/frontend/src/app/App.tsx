@@ -1,4 +1,11 @@
+import type { HealthResponse } from "@htr-trading-simulator/shared";
 import "./App.css";
+
+const initialHealth: HealthResponse = {
+  status: "ok",
+  service: "HTR Trading Simulator API",
+  timestamp: new Date().toISOString(),
+};
 
 function App() {
   return (
@@ -14,6 +21,7 @@ function App() {
         <section className="app-welcome">
           <h1>Trading Terminal</h1>
           <p>Historical market replay and paper trading platform.</p>
+          <p>API Status: {initialHealth.status}</p>
         </section>
       </div>
     </main>
