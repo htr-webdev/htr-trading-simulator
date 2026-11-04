@@ -134,3 +134,16 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Environment variables
+.env.*
+!.env.example
+
+# Local market data
+data/
+market-data/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3

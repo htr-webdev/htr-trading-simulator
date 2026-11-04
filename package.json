@@ -1,0 +1,30 @@
+{
+  "name": "htr-trading-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A historical cryptocurrency market replay and paper trading platform.",
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "packages/shared"
+  ],
+  "overrides": {
+    "@eslint/config-array": {
+      "minimatch": "11.0.1"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
+  },
+  "scripts": {
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "build": "npm run build:shared && npm run build:backend && npm run build:frontend",
+    "build:shared": "npm run build --workspace=@htr-trading-simulator/shared",
+    "build:backend": "npm run build --workspace=@htr-trading-simulator/backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=@htr-trading-simulator/backend && npm run lint --workspace=@htr-trading-simulator/shared",
+    "test": "npm run test --workspaces --if-present"
+  }
+}
