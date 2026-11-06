@@ -1,3 +1,4 @@
+
 {
   "name": "htr-trading-simulator",
   "version": "0.1.0",
@@ -7,7 +8,8 @@
     "apps/frontend",
     "apps/backend",
     "apps/cli",
-    "packages/shared"
+    "packages/shared",
+    "packages/market-data"
   ],
   "overrides": {
     "@eslint/config-array": {
@@ -22,12 +24,16 @@
     "dev:frontend": "npm run dev --workspace=apps/frontend",
     "dev:backend": "npm run dev --workspace=@htr-trading-simulator/backend",
     "dev:cli": "npm run dev --workspace=@htr-trading-simulator/cli",
-    "build": "npm run build:shared && npm run build:backend && npm run build:cli && npm run build:frontend",
+
+    "build": "npm run build:shared && npm run build:market-data && npm run build:backend && npm run build:cli && npm run build:frontend",
     "build:shared": "npm run build --workspace=@htr-trading-simulator/shared",
+    "build:market-data": "npm run build --workspace=@htr-trading-simulator/market-data",
     "build:backend": "npm run build --workspace=@htr-trading-simulator/backend",
     "build:cli": "npm run build --workspace=@htr-trading-simulator/cli",
     "build:frontend": "npm run build --workspace=frontend",
-    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=@htr-trading-simulator/backend && npm run lint --workspace=@htr-trading-simulator/cli && npm run lint --workspace=@htr-trading-simulator/shared",
+
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=@htr-trading-simulator/backend && npm run lint --workspace=@htr-trading-simulator/cli && npm run lint --workspace=@htr-trading-simulator/shared && npm run lint --workspace=@htr-trading-simulator/market-data",
+
     "test": "npm run test --workspaces --if-present"
   }
 }

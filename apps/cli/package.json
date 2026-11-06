@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@htr-trading-simulator/shared": "*",
+    "@htr-trading-simulator/market-data": "*",
     "commander": "^14.0.1"
   },
   "devDependencies": {
