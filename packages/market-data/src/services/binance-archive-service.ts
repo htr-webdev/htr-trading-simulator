@@ -120,7 +120,7 @@ export class BinanceArchiveService {
     const expectedCount =
       daysInUtcMonth(
         new Date(monthStart).getUTCFullYear(),
-        new Date(monthStart).getUTCMonth(),
+        new Date(monthStart).getUTCMonth() + 1,
       ) *
       (DAY_IN_MILLISECONDS / step);
 
