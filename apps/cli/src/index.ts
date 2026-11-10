@@ -1,5 +1,8 @@
 import { Command } from "commander";
-import { BinanceArchiveService } from "@htr-trading-simulator/market-data";
+import {
+  BinanceArchiveService,
+  detectCandleGaps,
+} from "@htr-trading-simulator/market-data";
 
 const program = new Command();
 
@@ -55,6 +58,27 @@ program
         const first = new Date(candles[0].openTime).toISOString();
         const last = new Date(candles[candles.length - 1].openTime).toISOString();
         console.log(`Range: ${first} -> ${last}`);
+
+        const gaps = detectCandleGaps(candles, interval);
+
+        if (gaps.length > 0) {
+          const missingTotal = gaps.reduce((sum, gap) => sum + gap.missingCount, 0);
+          console.warn(
+            `WARNING: ${missingTotal} missing candles across ${gaps.length} gap(s).`,
+          );
+
+          for (const gap of gaps.slice(0, 10)) {
+            console.warn(
+              `  Gap: ${new Date(gap.start).toISOString()} -> ${new Date(gap.end).toISOString()} (${gap.missingCount} candles)`,
+            );
+          }
+
+          if (gaps.length > 10) {
+            console.warn(`  ... and ${gaps.length - 10} more gap(s).`);
+          }
+        } else {
+          console.log("No gaps detected.");
+        }
       }
     } catch (error) {
       console.error(
