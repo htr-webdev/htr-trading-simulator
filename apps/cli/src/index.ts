@@ -1,12 +1,65 @@
 import { Command } from "commander";
+import { readFileSync, writeFileSync } from "node:fs";
 import {
   BinanceArchiveService,
   detectCandleGaps,
+  type Candle,
 } from "@htr-trading-simulator/market-data";
 
 const program = new Command();
 
 const ALLOWED_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "1d"] as const;
+
+const CSV_HEADER = "openTime,open,high,low,close,volume,closeTime";
+
+function candlesToCsv(candles: Candle[]): string {
+  const lines = candles.map(
+    (candle) =>
+      `${candle.openTime},${candle.open},${candle.high},${candle.low},${candle.close},${candle.volume},${candle.closeTime}`,
+  );
+
+  return [CSV_HEADER, ...lines].join("\n") + "\n";
+}
+
+function csvToCandles(csv: string): Candle[] {
+  const lines = csv.trim().split(/\r?\n/);
+
+  if (lines[0] !== CSV_HEADER) {
+    throw new Error("Candle file has an invalid header.");
+  }
+
+  const candles: Candle[] = [];
+
+  for (const [index, line] of lines.slice(1).entries()) {
+    const parts = line.split(",");
+
+    if (parts.length !== 7 || !/^\d+$/.test(parts[0]) || !/^\d+$/.test(parts[6])) {
+      throw new Error(`Invalid candle record at line ${index + 2}.`);
+    }
+
+    candles.push({
+      openTime: Number(parts[0]),
+      open: parts[1],
+      high: parts[2],
+      low: parts[3],
+      close: parts[4],
+      volume: parts[5],
+      closeTime: Number(parts[6]),
+    });
+  }
+
+  return candles;
+}
+
+function readCandleFile(filePath: string): Candle[] {
+  const csv = readFileSync(filePath, "utf8");
+
+  return csvToCandles(csv);
+}
+
+function writeCandleFile(filePath: string, candles: Candle[]): void {
+  writeFileSync(filePath, candlesToCsv(candles), { encoding: "utf8" });
+}
 
 program
   .name("htr-trading-simulator")
@@ -20,6 +73,8 @@ program
   .option("--interval <interval>", "Candlestick interval", "1m")
   .requiredOption("--start <date>", "Start date (YYYY-MM-DD)")
   .requiredOption("--end <date>", "End date (YYYY-MM-DD)")
+  .option("--from-file <path>", "Existing candle CSV to merge with (incremental download)")
+  .option("--to-file <path>", "Save merged candles to CSV file")
   .action(async (options) => {
     const symbol = String(options.symbol).toUpperCase();
 
@@ -39,6 +94,21 @@ program
       return;
     }
 
+    let existingCandles: Candle[] = [];
+
+    if (options.fromFile) {
+      try {
+        existingCandles = readCandleFile(String(options.fromFile));
+        console.log(`Loaded ${existingCandles.length} existing candles.`);
+      } catch (error) {
+        console.error(
+          `Failed to read candle file: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        process.exitCode = 1;
+        return;
+      }
+    }
+
     console.log(
       `Downloading ${symbol} ${interval} candles from ${options.start} to ${options.end}...`,
     );
@@ -50,9 +120,15 @@ program
         interval,
         String(options.start),
         String(options.end),
+        existingCandles,
       );
 
-      console.log(`Downloaded ${candles.length} candles.`);
+      console.log(`Total candles after merge: ${candles.length}.`);
+
+      if (options.toFile) {
+        writeCandleFile(String(options.toFile), candles);
+        console.log(`Saved to ${options.toFile}`);
+      }
 
       if (candles.length > 0) {
         const first = new Date(candles[0].openTime).toISOString();
