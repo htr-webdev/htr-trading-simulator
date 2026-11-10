@@ -57,16 +57,18 @@ _These features are part of the project roadmap and are being developed incremen
 
 ## Project Architecture
 
-The project uses a modular monorepo architecture with separate workspaces for the frontend, backend, and shared code.
+The project uses a modular monorepo architecture with separate workspaces for the frontend, backend, CLI, and shared code.
 
 ```text
 htr-trading-simulator/
 ├── apps/
 │   ├── frontend/       # React application
-│   └── backend/        # Fastify API server
+│   ├── backend/        # Fastify API server
+│   └── cli/            # Command-line tools
 │
 ├── packages/
-│   └── shared/         # Shared types and definitions
+│   ├── shared/         # Shared types and definitions
+│   └── market-data/    # Historical market data providers and services
 │
 ├── package.json
 ├── package-lock.json
@@ -124,6 +126,16 @@ Check the backend health endpoint:
 http://127.0.0.1:3000/health
 ```
 
+### CLI
+
+Download historical BTCUSDT candles into a local CSV file:
+
+```bash
+npm run dev:cli -- download --symbol BTCUSDT --interval 1m --start 2025-06-01 --end 2025-06-30 --to-file data/btcusdt-2025-06.csv
+```
+
+Pass `--from-file` with a previously saved file to extend an existing dataset incrementally; fully covered months are not downloaded again.
+
 ### Build
 
 Build all workspaces:
@@ -135,8 +147,10 @@ npm run build
 The build process runs in the following order:
 
 1. Shared
-2. Backend
-3. Frontend
+2. Market data
+3. Backend
+4. CLI
+5. Frontend
 
 ### Code Quality
 
@@ -144,6 +158,12 @@ Run ESLint across all workspaces:
 
 ```bash
 npm run lint
+```
+
+Run the test suite:
+
+```bash
+npm run test
 ```
 
 ## Roadmap
@@ -154,7 +174,7 @@ Development is organized into two main phases.
 
 - [x] Initialize repository and project documentation.
 - [x] Establish modular project architecture.
-- [ ] Implement historical market data downloader.
+- [x] Implement historical market data downloader.
 - [ ] Implement local market data storage.
 - [ ] Build the initial trading terminal interface.
 - [ ] Implement the historical candlestick chart.
@@ -173,7 +193,7 @@ Development is organized into two main phases.
 
 **Development Stage:** Early Development
 
-The project is currently focused on establishing its modular architecture and building the foundation for historical market data processing and chart visualization.
+The project is currently focused on historical market data processing: downloading, validating, and incrementally extending historical candle data, with storage and replay coming next.
 
 Features will be introduced incrementally as development progresses.
 
