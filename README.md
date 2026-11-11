@@ -178,7 +178,7 @@ Development is organized into two main phases.
 - [x] Establish modular project architecture.
 - [x] Implement historical market data downloader.
 - [x] Implement local market data storage.
-- [ ] Build the initial trading terminal interface.
+- [x] Build the initial trading terminal interface.
 - [ ] Implement the historical candlestick chart.
 
 ### Phase 2 — Market Replay & Trading Simulation
