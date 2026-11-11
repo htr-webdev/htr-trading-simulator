@@ -1,15 +1,24 @@
+import ToolbarPanel from "../components/layout/ToolbarPanel";
+import ChartPanel from "../features/chart/ChartPanel";
+import MarketWatchPanel from "../features/market-watch/MarketWatchPanel";
+import TerminalPanel from "../features/trading/TerminalPanel";
+
 /**
- * Root shell of the trading terminal.
- *
- * Panel composition (Market Watch, chart, terminal) is built up in
- * separate components; this file only holds the dark canvas.
+ * Root layout of the trading terminal (MetaTrader-style):
+ * toolbar on top, Market Watch on the left, chart in the center,
+ * terminal panel at the bottom.
  */
 function App() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-terminal-bg text-terminal-text">
-      <h1 className="px-4 py-3 text-sm font-semibold text-terminal-muted">
-        HTR Trading Simulator
-      </h1>
+      <ToolbarPanel />
+
+      <div className="flex min-h-0 flex-1">
+        <MarketWatchPanel />
+        <ChartPanel />
+      </div>
+
+      <TerminalPanel />
     </div>
   );
 }
