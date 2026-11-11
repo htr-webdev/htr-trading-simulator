@@ -1,6 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import type { Candle } from "../types/candle.js";
 
+// The composite primary key (symbol, interval, open_time) is backed by an
+// implicit index that serves the candle query patterns (filter by symbol and
+// interval, range over open_time, ordered output). No additional index is
+// needed; add one only when a new query pattern requires it.
 const CREATE_CANDLES_TABLE = `
   CREATE TABLE IF NOT EXISTS candles (
     symbol TEXT NOT NULL,
@@ -127,6 +131,30 @@ export class CandleDatabase {
       volume: row.volume,
       closeTime: row.close_time,
     }));
+  }
+
+  /**
+   * Returns the query plan rows for the candle range query. Exposed
+   * for tests to verify that queries run on the primary key index.
+   */
+  explainCandleQuery(
+    symbol: string,
+    interval: string,
+    startTime: number,
+    endTime: number,
+  ): string[] {
+    const statement = this.database.prepare(
+      `EXPLAIN QUERY PLAN
+       SELECT open_time
+       FROM candles
+       WHERE symbol = ? AND interval = ?
+         AND open_time >= ? AND open_time <= ?
+       ORDER BY open_time ASC`,
+    );
+
+    return statement.all(symbol, interval, startTime, endTime).map(
+      (row) => (row as unknown as { detail: string }).detail,
+    );
   }
 
   close(): void {

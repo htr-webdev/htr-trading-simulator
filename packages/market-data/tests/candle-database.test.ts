@@ -135,4 +135,25 @@ describe("CandleDatabase", () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  it("uses the primary key index for range queries without a sort step", () => {
+    const database = new CandleDatabase(":memory:");
+
+    database.insertCandles("BTCUSDT", "1m", [
+      candle(0),
+      candle(MINUTE),
+      candle(2 * MINUTE),
+    ]);
+
+    const plan = database.explainCandleQuery("BTCUSDT", "1m", 0, 2 * MINUTE);
+
+    expect(plan).toHaveLength(1);
+    // The composite primary key's implicit index serves the query as a
+    // covering index — symbol, interval and open_time all come from it.
+    expect(plan[0]).toContain("SEARCH candles USING COVERING INDEX");
+    expect(plan[0]).toContain("symbol=? AND interval=?");
+    expect(plan.join(" ")).not.toContain("USE TEMP B-TREE");
+
+    database.close();
+  });
 });
