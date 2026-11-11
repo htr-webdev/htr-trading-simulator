@@ -1,30 +1,50 @@
-import type { HealthResponse } from "@htr-trading-simulator/shared";
-import "./App.css";
+import { useState } from "react";
+import ToolbarPanel from "../components/layout/ToolbarPanel";
+import ChartPanel from "../features/chart/ChartPanel";
+import MarketWatchPanel from "../features/market-watch/MarketWatchPanel";
+import {
+  INITIAL_MARKET_WATCH_SYMBOLS,
+} from "../features/market-watch/market-watch-model";
+import TerminalPanel from "../features/trading/TerminalPanel";
+import { useIsNarrowViewport } from "../hooks/useIsNarrowViewport";
+import MobileTerminalLayout from "./MobileTerminalLayout";
 
-const initialHealth: HealthResponse = {
-  status: "ok",
-  service: "HTR Trading Simulator API",
-  timestamp: new Date().toISOString(),
-};
-
+/**
+ * Root layout of the trading terminal.
+ *
+ * Below 1024px a dedicated mobile layout renders (icon top bar,
+ * collapsed Market Watch dropdown, collapsible terminal, full-width
+ * order bar). Above it, the MetaTrader-style desktop layout: toolbar
+ * on top, Market Watch on the left, chart in the center, terminal
+ * panel at the bottom.
+ */
 function App() {
-  return (
-    <main className="app">
-      <header className="app-header">
-        <div className="app-brand">
-          <span className="app-brand__name">HTR Trading Simulator</span>
-          <span className="app-brand__version">v0.1.0</span>
-        </div>
-      </header>
+  const isNarrow = useIsNarrowViewport();
+  const [activeSymbol, setActiveSymbol] = useState(
+    INITIAL_MARKET_WATCH_SYMBOLS[0].symbol,
+  );
 
-      <div className="app-content">
-        <section className="app-welcome">
-          <h1>Trading Terminal</h1>
-          <p>Historical market replay and paper trading platform.</p>
-          <p>API Status: {initialHealth.status}</p>
-        </section>
+  if (isNarrow) {
+    return (
+      <MobileTerminalLayout
+        symbols={INITIAL_MARKET_WATCH_SYMBOLS}
+        activeSymbol={activeSymbol}
+        onSymbolSelect={setActiveSymbol}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-terminal-bg text-terminal-text">
+      <ToolbarPanel />
+
+      <div className="flex min-h-0 flex-1">
+        <MarketWatchPanel />
+        <ChartPanel />
       </div>
-    </main>
+
+      <TerminalPanel />
+    </div>
   );
 }
 
