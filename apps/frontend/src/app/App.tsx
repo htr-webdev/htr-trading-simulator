@@ -1,30 +1,16 @@
-import type { HealthResponse } from "@htr-trading-simulator/shared";
-import "./App.css";
-
-const initialHealth: HealthResponse = {
-  status: "ok",
-  service: "HTR Trading Simulator API",
-  timestamp: new Date().toISOString(),
-};
-
+/**
+ * Root shell of the trading terminal.
+ *
+ * Panel composition (Market Watch, chart, terminal) is built up in
+ * separate components; this file only holds the dark canvas.
+ */
 function App() {
   return (
-    <main className="app">
-      <header className="app-header">
-        <div className="app-brand">
-          <span className="app-brand__name">HTR Trading Simulator</span>
-          <span className="app-brand__version">v0.1.0</span>
-        </div>
-      </header>
-
-      <div className="app-content">
-        <section className="app-welcome">
-          <h1>Trading Terminal</h1>
-          <p>Historical market replay and paper trading platform.</p>
-          <p>API Status: {initialHealth.status}</p>
-        </section>
-      </div>
-    </main>
+    <div className="flex h-full min-h-0 flex-col bg-terminal-bg text-terminal-text">
+      <h1 className="px-4 py-3 text-sm font-semibold text-terminal-muted">
+        HTR Trading Simulator
+      </h1>
+    </div>
   );
 }
 
