@@ -3,79 +3,116 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CandleDatabase } from "../src/storage/candle-database.js";
+import type { Candle } from "../src/types/candle.js";
 
-function insertCandle(
-  database: CandleDatabase,
-  openTime: number,
-): void {
-  database.connection
-    .prepare(
-      `INSERT INTO candles
-        (symbol, interval, open_time, open, high, low, close, volume, close_time)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      "BTCUSDT",
-      "1m",
-      openTime,
-      "1",
-      "2",
-      "0.5",
-      "1.5",
-      "10",
-      openTime + 59_999,
-    );
+const MINUTE = 60 * 1000;
+
+function candle(openTime: number): Candle {
+  return {
+    openTime,
+    open: "1",
+    high: "2",
+    low: "0.5",
+    close: "1.5",
+    volume: "10",
+    closeTime: openTime + MINUTE - 1,
+  };
 }
 
 describe("CandleDatabase", () => {
   it("creates the candles table on open", () => {
     const database = new CandleDatabase(":memory:");
 
-    const table = database.connection
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'candles'",
-      )
-      .get();
+    const row = database
+      .countCandles("BTCUSDT", "1m");
 
-    expect(table).toEqual({ name: "candles" });
+    expect(row).toBe(0);
 
     database.close();
   });
 
-  it("rejects duplicate candles with the same symbol, interval and open time", () => {
+  it("inserts candles and reports the inserted count", () => {
     const database = new CandleDatabase(":memory:");
 
-    insertCandle(database, 0);
+    const inserted = database.insertCandles("BTCUSDT", "1m", [
+      candle(0),
+      candle(MINUTE),
+    ]);
 
-    expect(() => insertCandle(database, 0)).toThrowError();
+    expect(inserted).toBe(2);
+    expect(database.countCandles("BTCUSDT", "1m")).toBe(2);
 
     database.close();
   });
 
-  it("allows the same open time for different symbols or intervals", () => {
+  it("ignores duplicate candles and counts only new ones", () => {
     const database = new CandleDatabase(":memory:");
 
-    database.connection
-      .prepare(
-        `INSERT INTO candles
-          (symbol, interval, open_time, open, high, low, close, volume, close_time)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run("BTCUSDT", "1m", 0, "1", "2", "0.5", "1.5", "10", 59_999);
+    database.insertCandles("BTCUSDT", "1m", [candle(0), candle(MINUTE)]);
 
-    database.connection
-      .prepare(
-        `INSERT INTO candles
-          (symbol, interval, open_time, open, high, low, close, volume, close_time)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run("BTCUSDT", "5m", 0, "1", "2", "0.5", "1.5", "10", 299_999);
+    const inserted = database.insertCandles("BTCUSDT", "1m", [
+      candle(0),
+      candle(MINUTE),
+      candle(2 * MINUTE),
+    ]);
 
-    const count = database.connection
-      .prepare("SELECT COUNT(*) AS count FROM candles")
-      .get() as { count: number };
+    expect(inserted).toBe(1);
+    expect(database.countCandles("BTCUSDT", "1m")).toBe(3);
 
-    expect(count.count).toBe(2);
+    database.close();
+  });
+
+  it("keeps duplicates separate per symbol and interval", () => {
+    const database = new CandleDatabase(":memory:");
+
+    database.insertCandles("BTCUSDT", "1m", [candle(0)]);
+    database.insertCandles("BTCUSDT", "5m", [candle(0)]);
+    database.insertCandles("ETHUSDT", "1m", [candle(0)]);
+
+    expect(database.countCandles("BTCUSDT", "1m")).toBe(1);
+    expect(database.countCandles("BTCUSDT", "5m")).toBe(1);
+    expect(database.countCandles("ETHUSDT", "1m")).toBe(1);
+
+    database.close();
+  });
+
+  it("retrieves candles in chronological order within the range", () => {
+    const database = new CandleDatabase(":memory:");
+
+    database.insertCandles("BTCUSDT", "1m", [
+      candle(0),
+      candle(MINUTE),
+      candle(2 * MINUTE),
+      candle(3 * MINUTE),
+    ]);
+
+    const candles = database.getCandles("BTCUSDT", "1m", MINUTE, 3 * MINUTE);
+
+    expect(candles.map((candle) => candle.openTime)).toEqual([
+      MINUTE,
+      2 * MINUTE,
+      3 * MINUTE,
+    ]);
+  });
+
+  it("maps stored rows back to the candle structure", () => {
+    const database = new CandleDatabase(":memory:");
+
+    database.insertCandles("BTCUSDT", "1m", [candle(0)]);
+
+    const [stored] = database.getCandles("BTCUSDT", "1m", 0, MINUTE);
+
+    expect(stored).toEqual(candle(0));
+
+    database.close();
+  });
+
+  it("returns an empty list for a range without candles", () => {
+    const database = new CandleDatabase(":memory:");
+
+    database.insertCandles("BTCUSDT", "1m", [candle(0)]);
+
+    expect(database.getCandles("BTCUSDT", "1m", MINUTE, 2 * MINUTE)).toEqual([]);
 
     database.close();
   });
@@ -86,15 +123,12 @@ describe("CandleDatabase", () => {
 
     try {
       const first = new CandleDatabase(filePath);
-      insertCandle(first, 0);
+      first.insertCandles("BTCUSDT", "1m", [candle(0)]);
       first.close();
 
       const second = new CandleDatabase(filePath);
-      const count = second.connection
-        .prepare("SELECT COUNT(*) AS count FROM candles")
-        .get() as { count: number };
 
-      expect(count.count).toBe(1);
+      expect(second.countCandles("BTCUSDT", "1m")).toBe(1);
 
       second.close();
     } finally {
