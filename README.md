@@ -177,7 +177,7 @@ Development is organized into two main phases.
 - [x] Initialize repository and project documentation.
 - [x] Establish modular project architecture.
 - [x] Implement historical market data downloader.
-- [ ] Implement local market data storage.
+- [x] Implement local market data storage.
 - [ ] Build the initial trading terminal interface.
 - [ ] Implement the historical candlestick chart.
 
