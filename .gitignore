@@ -135,8 +135,8 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# Local market data
-/data/
+# Local market data (any data/ directory, root or workspace level)
+data/
 
 # Local databases
 *.db

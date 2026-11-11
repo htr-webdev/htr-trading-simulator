@@ -2,54 +2,15 @@ import { Command } from "commander";
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   BinanceArchiveService,
+  CandleDatabase,
   detectCandleGaps,
   type Candle,
 } from "@htr-trading-simulator/market-data";
+import { candlesToCsv, csvToCandles } from "./candle-csv.js";
 
 const program = new Command();
 
 const ALLOWED_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "1d"] as const;
-
-const CSV_HEADER = "openTime,open,high,low,close,volume,closeTime";
-
-function candlesToCsv(candles: Candle[]): string {
-  const lines = candles.map(
-    (candle) =>
-      `${candle.openTime},${candle.open},${candle.high},${candle.low},${candle.close},${candle.volume},${candle.closeTime}`,
-  );
-
-  return [CSV_HEADER, ...lines].join("\n") + "\n";
-}
-
-function csvToCandles(csv: string): Candle[] {
-  const lines = csv.trim().split(/\r?\n/);
-
-  if (lines[0] !== CSV_HEADER) {
-    throw new Error("Candle file has an invalid header.");
-  }
-
-  const candles: Candle[] = [];
-
-  for (const [index, line] of lines.slice(1).entries()) {
-    const parts = line.split(",");
-
-    if (parts.length !== 7 || !/^\d+$/.test(parts[0]) || !/^\d+$/.test(parts[6])) {
-      throw new Error(`Invalid candle record at line ${index + 2}.`);
-    }
-
-    candles.push({
-      openTime: Number(parts[0]),
-      open: parts[1],
-      high: parts[2],
-      low: parts[3],
-      close: parts[4],
-      volume: parts[5],
-      closeTime: Number(parts[6]),
-    });
-  }
-
-  return candles;
-}
 
 function readCandleFile(filePath: string): Candle[] {
   const csv = readFileSync(filePath, "utf8");
@@ -59,6 +20,18 @@ function readCandleFile(filePath: string): Candle[] {
 
 function writeCandleFile(filePath: string, candles: Candle[]): void {
   writeFileSync(filePath, candlesToCsv(candles), { encoding: "utf8" });
+}
+
+
+function openCandleDatabase(filePath: string): CandleDatabase {
+  try {
+    return new CandleDatabase(filePath);
+  } catch (error) {
+    console.error(
+      `Failed to open candle database: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exit(1);
+  }
 }
 
 program
@@ -75,6 +48,7 @@ program
   .requiredOption("--end <date>", "End date (YYYY-MM-DD)")
   .option("--from-file <path>", "Existing candle CSV to merge with (incremental download)")
   .option("--to-file <path>", "Save merged candles to CSV file")
+  .option("--database <path>", "SQLite database to load existing candles from and store the result in")
   .action(async (options) => {
     const symbol = String(options.symbol).toUpperCase();
 
@@ -94,7 +68,19 @@ program
       return;
     }
 
+    let database: CandleDatabase | null = null;
     let existingCandles: Candle[] = [];
+
+    if (options.database) {
+      database = openCandleDatabase(String(options.database));
+      existingCandles = database.getCandles(
+        symbol,
+        interval,
+        0,
+        Number.MAX_SAFE_INTEGER,
+      );
+      console.log(`Loaded ${existingCandles.length} existing candles from database.`);
+    }
 
     if (options.fromFile) {
       try {
@@ -130,6 +116,14 @@ program
         console.log(`Saved to ${options.toFile}`);
       }
 
+      if (database) {
+        const inserted = database.insertCandles(symbol, interval, candles);
+        console.log(
+          `Database: ${inserted} new candles stored, ${database.countCandles(symbol, interval)} total.`,
+        );
+        database.close();
+      }
+
       if (candles.length > 0) {
         const first = new Date(candles[0].openTime).toISOString();
         const last = new Date(candles[candles.length - 1].openTime).toISOString();
@@ -161,6 +155,53 @@ program
         `Download failed: ${error instanceof Error ? error.message : String(error)}`,
       );
       process.exitCode = 1;
+    }
+  });
+
+program
+  .command("candles")
+  .description("Read stored candles from a local database without downloading")
+  .requiredOption("--symbol <symbol>", "Trading pair symbol")
+  .option("--interval <interval>", "Candlestick interval", "1m")
+  .requiredOption("--start <date>", "Start date (YYYY-MM-DD)")
+  .requiredOption("--end <date>", "End date (YYYY-MM-DD)")
+  .requiredOption("--database <path>", "SQLite database file")
+  .action((options) => {
+    const symbol = String(options.symbol).toUpperCase();
+
+    if (!/^[A-Z0-9]{4,20}$/.test(symbol)) {
+      console.error(`Invalid symbol: ${options.symbol}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const interval = String(options.interval);
+
+    if (!ALLOWED_INTERVALS.includes(interval as (typeof ALLOWED_INTERVALS)[number])) {
+      console.error(
+        `Unsupported interval: ${interval}. Allowed: ${ALLOWED_INTERVALS.join(", ")}`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    const database = openCandleDatabase(String(options.database));
+
+    try {
+      const startTime = Date.parse(`${options.start}T00:00:00.000Z`);
+      const endTime = Date.parse(`${options.end}T23:59:59.999Z`);
+
+      if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime > endTime) {
+        console.error("Invalid date range.");
+        process.exitCode = 1;
+        return;
+      }
+
+      const candles = database.getCandles(symbol, interval, startTime, endTime);
+
+      process.stdout.write(candlesToCsv(candles));
+    } finally {
+      database.close();
     }
   });
 

@@ -136,6 +136,8 @@ npm run dev:cli -- download --symbol BTCUSDT --interval 1m --start 2025-06-01 --
 
 Pass `--from-file` with a previously saved file to extend an existing dataset incrementally; fully covered months are not downloaded again.
 
+Use `--database <path>` to store candles in a local SQLite database instead of (or alongside) CSV files; pass the same database on the next run to resume incrementally, and use the `candles` command to read stored data without downloading. The suggested location is the `data/` directory, which is ignored by Git.
+
 ### Build
 
 Build all workspaces:
@@ -175,7 +177,7 @@ Development is organized into two main phases.
 - [x] Initialize repository and project documentation.
 - [x] Establish modular project architecture.
 - [x] Implement historical market data downloader.
-- [ ] Implement local market data storage.
+- [x] Implement local market data storage.
 - [ ] Build the initial trading terminal interface.
 - [ ] Implement the historical candlestick chart.
 
