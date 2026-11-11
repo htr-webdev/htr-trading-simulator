@@ -3,15 +3,7 @@ import {
   formatPrice,
   type MarketWatchSymbol,
 } from "../market-watch/market-watch-model";
-
-const POSITION_HEADERS = [
-  "Symbol",
-  "Volume",
-  "Entry",
-  "Current",
-  "P/L",
-  "Close",
-] as const;
+import PositionsTable from "./PositionsTable";
 
 const ORDER_BUTTON_BASE =
   "flex-1 rounded px-3 py-2 text-sm font-semibold text-white";
@@ -21,7 +13,8 @@ interface TerminalPanelProps {
 }
 
 /**
- * Bottom terminal panel: empty positions table plus order buttons.
+ * Bottom terminal panel (desktop layout): empty positions table plus
+ * order buttons.
  *
  * Order execution is wired up by the paper trading issue; buttons
  * stay disabled until then. Prices shown come from Market Watch data.
@@ -32,7 +25,7 @@ function TerminalPanel({ symbols = INITIAL_MARKET_WATCH_SYMBOLS }: TerminalPanel
   return (
     <section
       data-testid="terminal-panel"
-      className="flex h-40 shrink-0 border-t border-terminal-border bg-terminal-panel"
+      className="flex h-40 shrink-0 border-t border-terminal-border bg-terminal-panel max-lg:h-32"
     >
       <div className="flex min-w-0 flex-1 flex-col">
         <h2 className="border-b border-terminal-border px-2 py-1.5 text-xs font-semibold text-terminal-muted">
@@ -40,35 +33,11 @@ function TerminalPanel({ symbols = INITIAL_MARKET_WATCH_SYMBOLS }: TerminalPanel
         </h2>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <table
-            className="w-full font-mono-terminal text-xs"
-            data-testid="positions-table"
-          >
-            <thead>
-              <tr className="text-left text-terminal-muted">
-                {POSITION_HEADERS.map((header) => (
-                  <th key={header} scope="col" className="px-2 py-1 font-medium">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr>
-                <td
-                  colSpan={POSITION_HEADERS.length}
-                  className="px-2 py-4 text-center text-terminal-muted"
-                >
-                  No positions
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <PositionsTable />
         </div>
       </div>
 
-      <div className="flex w-48 shrink-0 flex-col gap-2 border-l border-terminal-border p-2">
+      <div className="flex w-48 shrink-0 flex-col gap-2 border-l border-terminal-border p-2 max-lg:w-36">
         <button
           type="button"
           disabled

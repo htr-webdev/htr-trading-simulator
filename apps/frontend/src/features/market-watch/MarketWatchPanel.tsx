@@ -15,13 +15,14 @@ interface MarketWatchPanelProps {
  * Market Watch side panel.
  *
  * Lists tradable symbols with their prices. Data comes from
- * `market-watch-model` (static until a live source exists).
+ * `market-watch-model` (static until a live source exists). The panel
+ * hides itself on small screens; the shell decides when to mount it.
  */
 function MarketWatchPanel({ symbols = INITIAL_MARKET_WATCH_SYMBOLS }: MarketWatchPanelProps) {
   return (
     <aside
       data-testid="market-watch-panel"
-      className="flex w-56 shrink-0 flex-col border-r border-terminal-border bg-terminal-panel"
+      className="flex w-56 shrink-0 flex-col border-r border-terminal-border bg-terminal-panel max-lg:w-44"
     >
       <h2 className="border-b border-terminal-border px-2 py-1.5 text-xs font-semibold text-terminal-muted">
         Market Watch

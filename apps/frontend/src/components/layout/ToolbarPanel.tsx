@@ -1,9 +1,6 @@
 import { useState } from "react";
-import {
-  CHART_INTERVALS,
-  INTERVAL_LABELS,
-  type ChartInterval,
-} from "./chart-intervals";
+import IntervalSelector from "./IntervalSelector";
+import type { ChartInterval } from "./chart-intervals";
 
 const PLACEHOLDER_ACTIONS = [
   { id: "drawings", label: "Drawings" },
@@ -16,7 +13,7 @@ interface ToolbarPanelProps {
 }
 
 /**
- * Top toolbar of the trading terminal.
+ * Top toolbar of the trading terminal (desktop layout).
  *
  * Interval buttons switch the visual selection only; wiring them to
  * chart data happens with the chart issue. Placeholder actions stay
@@ -41,36 +38,13 @@ function ToolbarPanel({
 
       <div className="mx-2 h-5 w-px bg-terminal-border" role="separator" />
 
-      <div
-        data-testid="interval-group"
-        className="flex items-center gap-1"
-        role="group"
-        aria-label="Chart interval"
-      >
-        {CHART_INTERVALS.map((interval) => {
-          const isActive = interval === currentInterval;
-
-          return (
-            <button
-              key={interval}
-              type="button"
-              aria-pressed={isActive}
-              title={`Show ${INTERVAL_LABELS[interval]} candles`}
-              onClick={() => {
-                setActiveInterval(interval);
-                onIntervalChange?.(interval);
-              }}
-              className={
-                isActive
-                  ? "rounded bg-terminal-accent px-2 py-0.5 text-xs font-semibold text-white"
-                  : "rounded px-2 py-0.5 text-xs text-terminal-muted hover:bg-terminal-panel-alt hover:text-terminal-text"
-              }
-            >
-              {INTERVAL_LABELS[interval]}
-            </button>
-          );
-        })}
-      </div>
+      <IntervalSelector
+        activeInterval={currentInterval}
+        onSelect={(interval) => {
+          setActiveInterval(interval);
+          onIntervalChange?.(interval);
+        }}
+      />
 
       <div className="flex-1" />
 
