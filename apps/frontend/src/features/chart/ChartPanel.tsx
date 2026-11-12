@@ -25,6 +25,8 @@ export type ChartState =
 
 interface ChartPanelProps {
   state: ChartState;
+  /** Shown in the chart header, e.g. "BTCUSDT — M1". */
+  label?: string;
 }
 
 const CHART_OPTIONS = {
@@ -62,7 +64,7 @@ function stateOverlay(state: ChartState) {
  * candles, with loading, empty and error overlays for every other
  * data state.
  */
-function ChartPanel({ state }: ChartPanelProps) {
+function ChartPanel({ state, label }: ChartPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -111,6 +113,17 @@ function ChartPanel({ state }: ChartPanelProps) {
       data-testid="chart-panel"
       className="relative flex min-h-0 flex-1 flex-col bg-terminal-bg"
     >
+      {label && (
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center px-3 py-1.5">
+          <span
+            data-testid="chart-label"
+            className="text-xs font-semibold text-terminal-text"
+          >
+            {label}
+          </span>
+        </div>
+      )}
+
       <div
         ref={containerRef}
         data-testid="chart-container"

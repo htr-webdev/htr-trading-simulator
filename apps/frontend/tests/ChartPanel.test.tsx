@@ -43,6 +43,18 @@ describe("ChartPanel", () => {
     expect(screen.queryByTestId("chart-overlay")).toBeNull();
   });
 
+  it("shows the active symbol and interval label when given", () => {
+    render(<ChartPanel state={READY_STATE} label="BTCUSDT — M1" />);
+
+    expect(screen.getByTestId("chart-label")).toHaveTextContent("BTCUSDT — M1");
+  });
+
+  it("hides the chart label when not given", () => {
+    render(<ChartPanel state={READY_STATE} />);
+
+    expect(screen.queryByTestId("chart-label")).toBeNull();
+  });
+
   it("creates the chart, feeds candles and cleans up on unmount", () => {
     const { unmount } = render(<ChartPanel state={READY_STATE} />);
 
@@ -96,5 +108,12 @@ describe("ChartPanel", () => {
     expect(CHART_THEME.candlestick.upColor).toBe("#26a69a");
     expect(CHART_THEME.candlestick.downColor).toBe("#ef5350");
     expect(CHART_THEME.layout.background.color).toBe("#0b0e14");
+  });
+
+  it("pins explicit zoom and scroll behavior", () => {
+    expect(CHART_THEME.handleScale.mouseWheel).toBe(true);
+    expect(CHART_THEME.handleScale.pinch).toBe(true);
+    expect(CHART_THEME.handleScroll.horzTouchDrag).toBe(true);
+    expect(CHART_THEME.handleScroll.vertTouchDrag).toBe(false);
   });
 });

@@ -52,8 +52,14 @@ function App() {
       />
 
       <div className="flex min-h-0 flex-1">
-        <MarketWatchPanel />
-        <ChartPanel state={chartState} />
+        <MarketWatchPanel
+          activeSymbol={activeSymbol}
+          onSymbolSelect={setActiveSymbol}
+        />
+        <ChartPanel
+          state={chartState}
+          label={`${activeSymbol} — ${desktopInterval.toUpperCase()}`}
+        />
       </div>
 
       <TerminalPanel />

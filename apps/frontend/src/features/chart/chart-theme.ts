@@ -15,6 +15,26 @@ export const CHART_THEME = {
   crosshair: {
     mode: 0,
   },
+  // Explicit interaction behavior (issue #6 acceptance): horizontal
+  // scrolling and wheel zoom on; vertical scrolling off (time-only data).
+  handleScroll: {
+    mouseWheel: false,
+    pressedMouseMove: true,
+    horzTouchDrag: true,
+    vertTouchDrag: false,
+  },
+  handleScale: {
+    mouseWheel: true,
+    pinch: true,
+    axisPressedMouseMove: {
+      time: true,
+      price: true,
+    },
+    axisDoubleClickReset: {
+      time: true,
+      price: true,
+    },
+  },
   timeScale: {
     borderColor: "#2a2e39",
   },

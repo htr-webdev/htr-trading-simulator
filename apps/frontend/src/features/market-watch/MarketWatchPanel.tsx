@@ -9,16 +9,23 @@ const TABLE_HEADERS = ["Symbol", "Bid", "Ask", "Change"] as const;
 
 interface MarketWatchPanelProps {
   symbols?: MarketWatchSymbol[];
+  activeSymbol?: string;
+  onSymbolSelect?: (symbol: string) => void;
 }
 
 /**
  * Market Watch side panel.
  *
- * Lists tradable symbols with their prices. Data comes from
- * `market-watch-model` (static until a live source exists). The panel
- * hides itself on small screens; the shell decides when to mount it.
+ * Lists tradable symbols with their prices; clicking a row makes it
+ * the active symbol. Data comes from `market-watch-model` (static
+ * until a live source exists). The panel hides itself on small
+ * screens; the shell decides when to mount it.
  */
-function MarketWatchPanel({ symbols = INITIAL_MARKET_WATCH_SYMBOLS }: MarketWatchPanelProps) {
+function MarketWatchPanel({
+  symbols = INITIAL_MARKET_WATCH_SYMBOLS,
+  activeSymbol,
+  onSymbolSelect,
+}: MarketWatchPanelProps) {
   return (
     <aside
       data-testid="market-watch-panel"
@@ -41,26 +48,35 @@ function MarketWatchPanel({ symbols = INITIAL_MARKET_WATCH_SYMBOLS }: MarketWatc
           </thead>
 
           <tbody>
-            {symbols.map((symbol) => (
-              <tr
-                key={symbol.symbol}
-                data-testid={`market-watch-row-${symbol.symbol}`}
-                className="border-t border-terminal-border/60 text-terminal-text hover:bg-terminal-panel-alt"
-              >
-                <td className="px-2 py-1 font-sans font-semibold">{symbol.symbol}</td>
-                <td className="px-2 py-1">{formatPrice(symbol.bid)}</td>
-                <td className="px-2 py-1">{formatPrice(symbol.ask)}</td>
-                <td
-                  className={
-                    symbol.change >= 0
-                      ? "px-2 py-1 text-terminal-up"
-                      : "px-2 py-1 text-terminal-down"
-                  }
+            {symbols.map((symbol) => {
+              const isActive = symbol.symbol === activeSymbol;
+              const rowClass = isActive
+                ? "bg-terminal-panel-alt text-terminal-text"
+                : "text-terminal-text hover:bg-terminal-panel-alt";
+
+              return (
+                <tr
+                  key={symbol.symbol}
+                  data-testid={`market-watch-row-${symbol.symbol}`}
+                  aria-selected={isActive}
+                  onClick={() => onSymbolSelect?.(symbol.symbol)}
+                  className={`cursor-pointer border-t border-terminal-border/60 ${rowClass}`}
                 >
-                  {formatChange(symbol.changePercent)}%
-                </td>
-              </tr>
-            ))}
+                  <td className="px-2 py-1 font-sans font-semibold">{symbol.symbol}</td>
+                  <td className="px-2 py-1">{formatPrice(symbol.bid)}</td>
+                  <td className="px-2 py-1">{formatPrice(symbol.ask)}</td>
+                  <td
+                    className={
+                      symbol.change >= 0
+                        ? "px-2 py-1 text-terminal-up"
+                        : "px-2 py-1 text-terminal-down"
+                    }
+                  >
+                    {formatChange(symbol.changePercent)}%
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

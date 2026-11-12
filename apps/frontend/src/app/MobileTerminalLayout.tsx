@@ -54,7 +54,10 @@ function MobileTerminalLayout({
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <ChartPanel state={chartState} />
+        <ChartPanel
+          state={chartState}
+          label={`${activeSymbol} — ${activeInterval.toUpperCase()}`}
+        />
       </div>
 
       <button
