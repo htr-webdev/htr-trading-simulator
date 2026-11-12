@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ChartInterval } from "../components/layout/chart-intervals";
 import ToolbarPanel from "../components/layout/ToolbarPanel";
 import ChartPanel from "../features/chart/ChartPanel";
 import MarketWatchPanel from "../features/market-watch/MarketWatchPanel";
@@ -7,6 +8,7 @@ import {
 } from "../features/market-watch/market-watch-model";
 import TerminalPanel from "../features/trading/TerminalPanel";
 import { useIsNarrowViewport } from "../hooks/useIsNarrowViewport";
+import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
 import MobileTerminalLayout from "./MobileTerminalLayout";
 
 /**
@@ -16,13 +18,21 @@ import MobileTerminalLayout from "./MobileTerminalLayout";
  * collapsed Market Watch dropdown, collapsible terminal, full-width
  * order bar). Above it, the MetaTrader-style desktop layout: toolbar
  * on top, Market Watch on the left, chart in the center, terminal
- * panel at the bottom.
+ * panel at the bottom. Both layouts share the active symbol state and
+ * load chart candles from the backend.
  */
 function App() {
   const isNarrow = useIsNarrowViewport();
   const [activeSymbol, setActiveSymbol] = useState(
     INITIAL_MARKET_WATCH_SYMBOLS[0].symbol,
   );
+  const [desktopInterval, setDesktopInterval] = useState<ChartInterval>("1m");
+
+  const chartState = useCandles({
+    symbol: activeSymbol,
+    interval: desktopInterval,
+    ...INITIAL_DATE_RANGE,
+  });
 
   if (isNarrow) {
     return (
@@ -36,11 +46,14 @@ function App() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-terminal-bg text-terminal-text">
-      <ToolbarPanel />
+      <ToolbarPanel
+        selectedInterval={desktopInterval}
+        onIntervalChange={setDesktopInterval}
+      />
 
       <div className="flex min-h-0 flex-1">
         <MarketWatchPanel />
-        <ChartPanel />
+        <ChartPanel state={chartState} />
       </div>
 
       <TerminalPanel />

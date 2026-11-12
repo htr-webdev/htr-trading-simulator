@@ -17,8 +17,14 @@ export interface ChartCandle {
   close: number;
 }
 
+export type ChartState =
+  | { status: "loading" }
+  | { status: "empty" }
+  | { status: "error"; message: string }
+  | { status: "ready"; candles: ChartCandle[] };
+
 interface ChartPanelProps {
-  candles?: ChartCandle[];
+  state: ChartState;
 }
 
 const CHART_OPTIONS = {
@@ -31,11 +37,32 @@ const CHART_OPTIONS = {
   },
 };
 
+function stateOverlay(state: ChartState) {
+  if (state.status === "loading") {
+    return <span className="text-xs text-terminal-muted">Loading candles…</span>;
+  }
+
+  if (state.status === "empty") {
+    return (
+      <span className="text-xs text-terminal-muted">
+        No local data yet — download candles with the CLI first.
+      </span>
+    );
+  }
+
+  if (state.status === "error") {
+    return <span className="text-xs text-terminal-down">{state.message}</span>;
+  }
+
+  return null;
+}
+
 /**
  * Central chart area: renders the candlestick chart from the given
- * candles (demo data until the data-fetch step wires the backend).
+ * candles, with loading, empty and error overlays for every other
+ * data state.
  */
-function ChartPanel({ candles = DEMO_CANDLES }: ChartPanelProps) {
+function ChartPanel({ state }: ChartPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -63,11 +90,11 @@ function ChartPanel({ candles = DEMO_CANDLES }: ChartPanelProps) {
   useEffect(() => {
     const series = seriesRef.current;
 
-    if (!series) {
+    if (!series || state.status !== "ready") {
       return;
     }
 
-    const data: CandlestickData<Time>[] = candles.map((candle) => ({
+    const data: CandlestickData<Time>[] = state.candles.map((candle) => ({
       time: (candle.time / 1000) as Time,
       open: candle.open,
       high: candle.high,
@@ -77,29 +104,29 @@ function ChartPanel({ candles = DEMO_CANDLES }: ChartPanelProps) {
 
     series.setData(data);
     chartRef.current?.timeScale().fitContent();
-  }, [candles]);
+  }, [state]);
 
   return (
     <section
       data-testid="chart-panel"
-      className="flex min-h-0 flex-1 flex-col bg-terminal-bg"
+      className="relative flex min-h-0 flex-1 flex-col bg-terminal-bg"
     >
       <div
         ref={containerRef}
         data-testid="chart-container"
         className="min-h-0 w-full flex-1"
       />
+
+      {state.status !== "ready" && (
+        <div
+          data-testid="chart-overlay"
+          className="absolute inset-0 flex items-center justify-center bg-terminal-bg/80"
+        >
+          {stateOverlay(state)}
+        </div>
+      )}
     </section>
   );
 }
-
-/** Static demo candles proving the render pipeline until real data lands. */
-const DEMO_CANDLES: ChartCandle[] = [
-  { time: Date.UTC(2025, 5, 16, 0), open: 105000, high: 105500, low: 104800, close: 105300 },
-  { time: Date.UTC(2025, 5, 16, 1), open: 105300, high: 105700, low: 105100, close: 105600 },
-  { time: Date.UTC(2025, 5, 16, 2), open: 105600, high: 105800, low: 105200, close: 105250 },
-  { time: Date.UTC(2025, 5, 16, 3), open: 105250, high: 105650, low: 105150, close: 105550 },
-  { time: Date.UTC(2025, 5, 16, 4), open: 105550, high: 105900, low: 105400, close: 105850 },
-];
 
 export default ChartPanel;

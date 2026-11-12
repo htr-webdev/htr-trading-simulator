@@ -21,24 +21,30 @@ vi.mock("lightweight-charts", () => ({
   }),
 }));
 
-import ChartPanel from "../src/features/chart/ChartPanel";
+import ChartPanel, {
+  type ChartState,
+} from "../src/features/chart/ChartPanel";
 import { CHART_THEME } from "../src/features/chart/chart-theme";
 
+const READY_STATE: ChartState = {
+  status: "ready",
+  candles: [
+    { time: 1_000, open: 1, high: 2, low: 0.5, close: 1.5 },
+    { time: 2_000, open: 1.5, high: 2.5, low: 1, close: 2 },
+  ],
+};
+
 describe("ChartPanel", () => {
-  it("renders the chart container", () => {
-    render(<ChartPanel />);
+  it("renders the chart container without an overlay when ready", () => {
+    render(<ChartPanel state={READY_STATE} />);
 
     expect(screen.getByTestId("chart-panel")).toBeInTheDocument();
     expect(screen.getByTestId("chart-container")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-overlay")).toBeNull();
   });
 
   it("creates the chart, feeds candles and cleans up on unmount", () => {
-    const candles = [
-      { time: 1_000, open: 1, high: 2, low: 0.5, close: 1.5 },
-      { time: 2_000, open: 1.5, high: 2.5, low: 1, close: 2 },
-    ];
-
-    const { unmount } = render(<ChartPanel candles={candles} />);
+    const { unmount } = render(<ChartPanel state={READY_STATE} />);
 
     expect(setData).toHaveBeenCalledWith([
       { time: 1, open: 1, high: 2, low: 0.5, close: 1.5 },
@@ -49,6 +55,41 @@ describe("ChartPanel", () => {
     unmount();
 
     expect(remove).toHaveBeenCalled();
+  });
+
+  it("shows a loading overlay while candles load", () => {
+    render(<ChartPanel state={{ status: "loading" }} />);
+
+    expect(screen.getByTestId("chart-overlay")).toBeInTheDocument();
+    expect(screen.getByText("Loading candles…")).toBeInTheDocument();
+  });
+
+  it("shows an empty overlay when no local data exists", () => {
+    render(<ChartPanel state={{ status: "empty" }} />);
+
+    expect(screen.getByTestId("chart-overlay")).toBeInTheDocument();
+    expect(
+      screen.getByText("No local data yet — download candles with the CLI first."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an error overlay with the failure message", () => {
+    render(
+      <ChartPanel
+        state={{ status: "error", message: "Cannot reach the API server." }}
+      />,
+    );
+
+    expect(screen.getByTestId("chart-overlay")).toBeInTheDocument();
+    expect(screen.getByText("Cannot reach the API server.")).toBeInTheDocument();
+  });
+
+  it("does not feed data to the chart outside the ready state", () => {
+    setData.mockClear();
+
+    render(<ChartPanel state={{ status: "loading" }} />);
+
+    expect(setData).not.toHaveBeenCalled();
   });
 
   it("uses the terminal palette for the chart theme", () => {
