@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import { existsSync } from "node:fs";
 import type { HealthResponse } from "@htr-trading-simulator/shared";
 import { CandleDatabase } from "@htr-trading-simulator/market-data";
@@ -6,8 +7,18 @@ import { getCandles, parseCandleQuery } from "./candles.js";
 
 const DEFAULT_DATABASE_PATH = "data/candles.sqlite";
 
+const DEFAULT_ALLOWED_ORIGIN = "http://127.0.0.1:5199";
+
 const server = Fastify({
   logger: true,
+});
+
+/**
+ * Allows the frontend dev origin to call the API. The origin is
+ * configurable for later deployments via CORS_ALLOWED_ORIGIN.
+ */
+await server.register(cors, {
+  origin: process.env.CORS_ALLOWED_ORIGIN ?? DEFAULT_ALLOWED_ORIGIN,
 });
 
 /**
