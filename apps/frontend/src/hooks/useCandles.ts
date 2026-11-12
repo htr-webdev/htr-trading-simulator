@@ -12,6 +12,8 @@ interface UseCandlesOptions {
   /** UTC date range in YYYY-MM-DD. */
   startDate: string;
   endDate: string;
+  /** Set false to skip fetching (e.g. while replay owns the chart). */
+  enabled?: boolean;
 }
 
 /** Initial demo window; replay controls will replace it later. */
@@ -29,10 +31,15 @@ export function useCandles({
   interval,
   startDate,
   endDate,
+  enabled = true,
 }: UseCandlesOptions): ChartState {
   const [state, setState] = useState<ChartState>({ status: "loading" });
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let cancelled = false;
 
     fetchCandles(symbol, interval, startDate, endDate).then(
@@ -54,7 +61,7 @@ export function useCandles({
     return () => {
       cancelled = true;
     };
-  }, [symbol, interval, startDate, endDate]);
+  }, [symbol, interval, startDate, endDate, enabled]);
 
   return state;
 }

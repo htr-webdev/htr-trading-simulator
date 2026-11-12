@@ -10,6 +10,7 @@ import TerminalPanel from "../features/trading/TerminalPanel";
 import { useIsNarrowViewport } from "../hooks/useIsNarrowViewport";
 import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
 import { useReplay } from "../hooks/useReplay";
+import { useReplayCandles } from "../hooks/useReplayCandles";
 import ReplayControls from "../features/replay/ReplayControls";
 import MobileTerminalLayout from "./MobileTerminalLayout";
 
@@ -30,17 +31,24 @@ function App() {
   );
   const [desktopInterval, setDesktopInterval] = useState<ChartInterval>("1m");
 
-  const chartState = useCandles({
-    symbol: activeSymbol,
-    interval: desktopInterval,
-    ...INITIAL_DATE_RANGE,
-  });
-
   const replay = useReplay({
     symbol: activeSymbol,
     interval: desktopInterval,
     ...INITIAL_DATE_RANGE,
   });
+
+  const chartState = useCandles({
+    symbol: activeSymbol,
+    interval: desktopInterval,
+    ...INITIAL_DATE_RANGE,
+    enabled: replay.sessionId === null,
+  });
+
+  const replayChartState = useReplayCandles(replay.sessionId, replay.state);
+
+  // While a replay session is active the chart is fed by the replay
+  // engine; otherwise it shows the static historical range.
+  const activeChartState = replay.sessionId ? replayChartState : chartState;
 
   if (isNarrow) {
     return (
@@ -67,7 +75,7 @@ function App() {
           onSymbolSelect={setActiveSymbol}
         />
         <ChartPanel
-          state={chartState}
+          state={activeChartState}
           label={`${activeSymbol} — ${desktopInterval.toUpperCase()}`}
         />
       </div>
