@@ -1,9 +1,5 @@
-import { INTERVAL_MS } from "@htr-trading-simulator/shared";
+import { INTERVAL_MS, type CandleIntervalKey } from "@htr-trading-simulator/shared";
 import type { CandleApiItem } from "./candles.js";
-
-export const AGGREGATION_INTERVALS = ["5m", "15m", "30m", "1h", "4h", "1d"] as const;
-
-export type AggregationInterval = (typeof AGGREGATION_INTERVALS)[number];
 
 /**
  * Aggregates sorted 1-minute candles into the given target interval.
@@ -21,7 +17,7 @@ export type AggregationInterval = (typeof AGGREGATION_INTERVALS)[number];
  */
 export function aggregateCandles(
   candles: CandleApiItem[],
-  interval: AggregationInterval | "1m",
+  interval: CandleIntervalKey,
 ): CandleApiItem[] {
   const intervalMs = INTERVAL_MS[interval];
 

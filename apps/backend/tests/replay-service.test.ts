@@ -204,3 +204,38 @@ describe("ReplayService.getCandlesUntilNow", () => {
     });
   });
 });
+
+describe("ReplayService aggregated intervals", () => {
+  it("returns aggregated candles up to the replay clock for a 5m session", () => {
+    const clock = 1_000;
+    const service = new ReplayService(() => clock);
+    const database = createTestDatabase();
+
+    // createTestDatabase() fills the full day with 1m candles.
+
+    const { sessionId } = service.create({
+      symbol: "BTCUSDT",
+      interval: "5m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+
+    // stepForward moves one 5m candle; clock stays paused afterwards.
+    service.stepForward(sessionId); // +5m
+
+    const candles = service.getCandlesUntilNow(sessionId, database) as CandleApiItem[];
+
+    expect(candles).toHaveLength(2);
+    expect(candles.map((item) => item.time)).toEqual([
+      START_MS,
+      START_MS + 5 * MINUTE,
+    ]);
+    expect(candles[1]).toEqual({
+      time: START_MS + 5 * MINUTE,
+      open: 1,
+      high: 2,
+      low: 0.5,
+      close: 1.5,
+    });
+  });
+});

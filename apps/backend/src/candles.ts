@@ -1,6 +1,8 @@
 import { CandleDatabase } from "@htr-trading-simulator/market-data";
+import { INTERVAL_MS, type CandleIntervalKey } from "@htr-trading-simulator/shared";
+import { aggregateCandles } from "./aggregation.js";
 
-export const ALLOWED_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "1d"] as const;
+export const ALLOWED_INTERVALS = ["1m", "3m", "5m", "15m", "30m", "1h", "4h", "1d"] as const;
 
 export type CandleInterval = (typeof ALLOWED_INTERVALS)[number];
 
@@ -90,6 +92,11 @@ export interface CandleApiItem {
  * Retrieves candles for a validated query. Prices are returned as
  * numbers, the shape charting libraries expect. A missing database
  * file is treated as "no data yet", not a failure.
+ *
+ * Intervals above 1m are aggregated from the stored 1-minute
+ * candles, so no additional downloads are needed. The 1m read is
+ * extended backwards to the first UTC bucket boundary covering the
+ * requested start, so the first aggregated candle is complete.
  */
 export function getCandles(
   database: CandleDatabase | null,
@@ -99,11 +106,18 @@ export function getCandles(
     return [];
   }
 
-  return database.getCandles(symbol, interval, startTime, endTime).map((candle) => ({
-    time: candle.openTime,
-    open: Number(candle.open),
-    high: Number(candle.high),
-    low: Number(candle.low),
-    close: Number(candle.close),
-  }));
+  const intervalMs = INTERVAL_MS[interval as CandleIntervalKey];
+  const alignedStart = Math.floor(startTime / intervalMs) * intervalMs;
+
+  const oneMinuteCandles = database
+    .getCandles(symbol, "1m", alignedStart, endTime)
+    .map((candle) => ({
+      time: candle.openTime,
+      open: Number(candle.open),
+      high: Number(candle.high),
+      low: Number(candle.low),
+      close: Number(candle.close),
+    }));
+
+  return aggregateCandles(oneMinuteCandles, interval as CandleIntervalKey);
 }

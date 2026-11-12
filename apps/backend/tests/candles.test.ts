@@ -117,3 +117,70 @@ describe("getCandles", () => {
     ).toEqual([]);
   });
 });
+
+describe("getCandles aggregation", () => {
+  it("aggregates 1m candles into 5m buckets", () => {
+    const { database, path } = createTestDatabase();
+
+    try {
+      database.insertCandles(
+        "BTCUSDT",
+        "1m",
+        [0, 1, 2, 3, 4, 5].map((minute) => candle(Date.UTC(2025, 5, 15, 0, minute))),
+      );
+
+      const items = getCandles(database, {
+        symbol: "BTCUSDT",
+        interval: "5m",
+        startTime: Date.UTC(2025, 5, 15),
+        endTime: Date.UTC(2025, 5, 16) - 1,
+      });
+
+      expect(items).toEqual([
+        { time: Date.UTC(2025, 5, 15), open: 1, high: 2, low: 0.5, close: 1.5 },
+        { time: Date.UTC(2025, 5, 15, 0, 5), open: 1, high: 2, low: 0.5, close: 1.5 },
+      ]);
+    } finally {
+      database.close();
+      rmSync(path, { recursive: true, force: true });
+    }
+  });
+
+  it("extends the 1m read back to the bucket boundary so the first candle is complete", () => {
+    const { database, path } = createTestDatabase();
+
+    try {
+      database.insertCandles(
+        "BTCUSDT",
+        "1m",
+        [58, 59].map((minute) => candle(Date.UTC(2025, 5, 15, 0, minute))),
+      );
+
+      const items = getCandles(database, {
+        symbol: "BTCUSDT",
+        interval: "1h",
+        // Query starts mid-hour; the bucket covers the whole hour.
+        startTime: Date.UTC(2025, 5, 15, 0, 59),
+        endTime: Date.UTC(2025, 5, 16) - 1,
+      });
+
+      expect(items).toEqual([
+        { time: Date.UTC(2025, 5, 15), open: 1, high: 2, low: 0.5, close: 1.5 },
+      ]);
+    } finally {
+      database.close();
+      rmSync(path, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts the 4h interval", () => {
+    const result = parseCandleQuery({
+      symbol: "BTCUSDT",
+      interval: "4h",
+      start: "2025-06-15",
+      end: "2025-06-15",
+    });
+
+    expect(result).not.toHaveProperty("error");
+  });
+});
