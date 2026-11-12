@@ -38,8 +38,8 @@ _These features are part of the project roadmap and are being developed incremen
 - React
 - TypeScript
 - Vite
-- TradingView Lightweight Charts (planned)
-- Tailwind CSS (planned)
+- TradingView Lightweight Charts
+- Tailwind CSS
 
 ### Backend
 
@@ -52,8 +52,8 @@ _These features are part of the project roadmap and are being developed incremen
 - npm Workspaces
 - TypeScript shared packages
 - ESLint
-- SQLite (planned)
-- Vitest (planned)
+- SQLite
+- Vitest
 
 ## Project Architecture
 
@@ -179,7 +179,7 @@ Development is organized into two main phases.
 - [x] Implement historical market data downloader.
 - [x] Implement local market data storage.
 - [x] Build the initial trading terminal interface.
-- [ ] Implement the historical candlestick chart.
+- [x] Implement the historical candlestick chart.
 
 ### Phase 2 — Market Replay & Trading Simulation
 
