@@ -9,6 +9,8 @@ import {
 import TerminalPanel from "../features/trading/TerminalPanel";
 import { useIsNarrowViewport } from "../hooks/useIsNarrowViewport";
 import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
+import { useReplay } from "../hooks/useReplay";
+import ReplayControls from "../features/replay/ReplayControls";
 import MobileTerminalLayout from "./MobileTerminalLayout";
 
 /**
@@ -34,6 +36,12 @@ function App() {
     ...INITIAL_DATE_RANGE,
   });
 
+  const replay = useReplay({
+    symbol: activeSymbol,
+    interval: desktopInterval,
+    ...INITIAL_DATE_RANGE,
+  });
+
   if (isNarrow) {
     return (
       <MobileTerminalLayout
@@ -50,6 +58,8 @@ function App() {
         selectedInterval={desktopInterval}
         onIntervalChange={setDesktopInterval}
       />
+
+      <ReplayControls replay={replay} interval={desktopInterval} />
 
       <div className="flex min-h-0 flex-1">
         <MarketWatchPanel
