@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import MarketWatchPanel from "../src/features/market-watch/MarketWatchPanel";
 import {
   formatChange,
@@ -37,6 +37,32 @@ describe("MarketWatchPanel", () => {
     const downCell = screen.getByText("-0.61%");
     expect(downCell).toHaveClass("text-terminal-down");
     expect(downCell).not.toHaveClass("text-terminal-up");
+  });
+
+  it("marks the active symbol row as selected", () => {
+    render(<MarketWatchPanel activeSymbol="ETHUSDT" />);
+
+    expect(screen.getByTestId("market-watch-row-ETHUSDT")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByTestId("market-watch-row-BTCUSDT")).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    expect(screen.getByTestId("market-watch-row-ETHUSDT")).toHaveClass(
+      "bg-terminal-panel-alt",
+    );
+  });
+
+  it("reports symbol selection when a row is clicked", () => {
+    const onSymbolSelect = vi.fn();
+
+    render(<MarketWatchPanel activeSymbol="BTCUSDT" onSymbolSelect={onSymbolSelect} />);
+
+    fireEvent.click(screen.getByTestId("market-watch-row-SOLUSDT"));
+
+    expect(onSymbolSelect).toHaveBeenCalledWith("SOLUSDT");
   });
 });
 

@@ -6,6 +6,8 @@ import MobileMarketWatch from "../features/market-watch/MobileMarketWatch";
 import type { MarketWatchSymbol } from "../features/market-watch/market-watch-model";
 import MobileOrderBar from "../features/trading/MobileOrderBar";
 import PositionsTable from "../features/trading/PositionsTable";
+import ChartPanel from "../features/chart/ChartPanel";
+import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
 
 interface MobileTerminalLayoutProps {
   symbols: MarketWatchSymbol[];
@@ -27,6 +29,12 @@ function MobileTerminalLayout({
   const [activeInterval, setActiveInterval] = useState<ChartInterval>("1m");
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
+  const chartState = useCandles({
+    symbol: activeSymbol,
+    interval: activeInterval,
+    ...INITIAL_DATE_RANGE,
+  });
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-terminal-bg text-terminal-text">
       <MobileTopBar />
@@ -46,7 +54,10 @@ function MobileTerminalLayout({
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <ChartAreaPlaceholder />
+        <ChartPanel
+          state={chartState}
+          label={`${activeSymbol} — ${activeInterval.toUpperCase()}`}
+        />
       </div>
 
       <button
@@ -70,19 +81,6 @@ function MobileTerminalLayout({
         symbol={symbols.find((symbol) => symbol.symbol === activeSymbol)}
       />
     </div>
-  );
-}
-
-function ChartAreaPlaceholder() {
-  return (
-    <section
-      data-testid="chart-panel"
-      className="flex flex-1 flex-col bg-terminal-bg"
-    >
-      <div className="flex flex-1 items-center justify-center">
-        <span className="text-xs text-terminal-muted">Chart — coming soon</span>
-      </div>
-    </section>
   );
 }
 
