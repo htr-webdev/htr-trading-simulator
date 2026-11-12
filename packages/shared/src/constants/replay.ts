@@ -23,3 +23,8 @@ export interface ReplayState {
   speed: ReplaySpeed;
   status: ReplayStatus;
 }
+
+export interface ReplaySessionResponse {
+  sessionId: string;
+  state: ReplayState;
+}

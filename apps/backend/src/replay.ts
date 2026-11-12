@@ -25,11 +25,15 @@ export interface ReplaySessionConfig {
   speed?: number;
 }
 
+export interface ResolvedReplayConfig extends Required<Omit<ReplaySessionConfig, "speed">> {
+  speed: ReplaySpeed;
+}
+
 /**
  * Validates replay session input. Returns the normalized config, or
  * an error message for the 400 response.
  */
-export function parseReplayConfig(config: ReplaySessionConfig): { config: Required<ReplaySessionConfig> } | { error: string } {
+export function parseReplayConfig(config: ReplaySessionConfig): { config: ResolvedReplayConfig } | { error: string } {
   const { symbol, interval, startTime, endTime } = config;
 
   if (!symbol || typeof symbol !== "string") {
@@ -55,7 +59,7 @@ export function parseReplayConfig(config: ReplaySessionConfig): { config: Requir
   }
 
   return {
-    config: { symbol, interval, startTime, endTime, speed: requestedSpeed },
+    config: { symbol, interval, startTime, endTime, speed: requestedSpeed as ReplaySpeed },
   };
 }
 
@@ -72,7 +76,7 @@ export class ReplaySession {
   private speed: ReplaySpeed;
   private status: ReplayStatus;
 
-  constructor(private readonly config: Required<ReplaySessionConfig>) {
+  constructor(private readonly config: ResolvedReplayConfig) {
     this.currentTime = config.startTime;
     this.speed = config.speed ?? DEFAULT_REPLAY_SPEED;
     this.status = "paused";
