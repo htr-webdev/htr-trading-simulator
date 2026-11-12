@@ -50,12 +50,24 @@ function App() {
   // engine; otherwise it shows the static historical range.
   const activeChartState = replay.sessionId ? replayChartState : chartState;
 
+  // A symbol or interval switch must reach the replay engine too, so
+  // an active session restarts at the new configuration's start.
+  const selectSymbol = (symbol: string) => {
+    setActiveSymbol(symbol);
+    void replay.restart({ symbol });
+  };
+
+  const changeInterval = (interval: ChartInterval) => {
+    setDesktopInterval(interval);
+    void replay.restart({ interval });
+  };
+
   if (isNarrow) {
     return (
       <MobileTerminalLayout
         symbols={INITIAL_MARKET_WATCH_SYMBOLS}
         activeSymbol={activeSymbol}
-        onSymbolSelect={setActiveSymbol}
+        onSymbolSelect={selectSymbol}
       />
     );
   }
@@ -64,7 +76,7 @@ function App() {
     <div className="flex h-full min-h-0 flex-col bg-terminal-bg text-terminal-text">
       <ToolbarPanel
         selectedInterval={desktopInterval}
-        onIntervalChange={setDesktopInterval}
+        onIntervalChange={changeInterval}
       />
 
       <ReplayControls replay={replay} interval={desktopInterval} />
@@ -72,7 +84,7 @@ function App() {
       <div className="flex min-h-0 flex-1">
         <MarketWatchPanel
           activeSymbol={activeSymbol}
-          onSymbolSelect={setActiveSymbol}
+          onSymbolSelect={selectSymbol}
         />
         <ChartPanel
           state={activeChartState}

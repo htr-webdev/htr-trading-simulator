@@ -25,6 +25,8 @@ export interface UseReplayResult {
   isBusy: boolean;
   speeds: readonly ReplaySpeed[];
   start: () => Promise<void>;
+  /** Restarts an active session with the given symbol/interval. */
+  restart: (overrides: Partial<Pick<UseReplayOptions, "symbol" | "interval">>) => Promise<void>;
   play: () => Promise<void>;
   pause: () => Promise<void>;
   step: () => Promise<void>;
@@ -76,8 +78,8 @@ export function useReplay({
     [],
   );
 
-  const start = useCallback(() => {
-    const inputs = inputsRef.current;
+  const start = useCallback((overrides?: Partial<UseReplayOptions>) => {
+    const inputs = { ...inputsRef.current, ...overrides };
 
     return run(async () => {
       const result = await createReplaySession(
@@ -173,9 +175,29 @@ export function useReplay({
     [run, sessionId],
   );
 
-  // Poll the backend while playing so the replay clock advances even
-  // without user interaction. applyResult on poll failures reports
-  // connection problems without touching the last known state.
+  // Track session existence so a restart can be a no-op without one.
+  const hasSessionRef = useRef(false);
+
+  useEffect(() => {
+    hasSessionRef.current = sessionId !== null;
+  }, [sessionId]);
+
+  /**
+   * Restarts an active session with the given symbol/interval so the
+   * replay engine follows the chart selection. Called from event
+   * handlers; without a session it does nothing.
+   */
+  const restart = useCallback(
+    (overrides: Partial<Pick<UseReplayOptions, "symbol" | "interval">>) => {
+      if (!hasSessionRef.current) {
+        return Promise.resolve();
+      }
+
+      return start(overrides);
+    },
+    [start],
+  );
+
   const pollRef = useRef(applyResult);
 
   useEffect(() => {
@@ -209,6 +231,7 @@ export function useReplay({
     isBusy,
     speeds: REPLAY_SPEEDS,
     start,
+    restart,
     play,
     pause,
     step,
