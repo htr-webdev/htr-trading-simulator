@@ -27,6 +27,7 @@ function makeReplay(overrides: Partial<UseReplayResult> = {}): UseReplayResult {
     isBusy: false,
     speeds: [0.25, 0.5, 1, 2, 4, 10],
     start: noop,
+    restart: () => Promise.resolve(),
     play: noop,
     pause: noop,
     step: noop,

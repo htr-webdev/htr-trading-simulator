@@ -1,21 +1,11 @@
 import {
   DEFAULT_REPLAY_SPEED,
+  INTERVAL_MS,
   REPLAY_SPEEDS,
   type ReplaySpeed,
   type ReplayState,
   type ReplayStatus,
 } from "@htr-trading-simulator/shared";
-
-/** Duration in ms of one candle per supported interval. */
-const INTERVAL_MS: Record<string, number> = {
-  "1m": 60 * 1000,
-  "3m": 3 * 60 * 1000,
-  "5m": 5 * 60 * 1000,
-  "15m": 15 * 60 * 1000,
-  "30m": 30 * 60 * 1000,
-  "1h": 60 * 60 * 1000,
-  "1d": 24 * 60 * 60 * 1000,
-};
 
 export interface ReplaySessionConfig {
   symbol: string;
