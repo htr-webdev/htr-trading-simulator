@@ -183,7 +183,7 @@ Development is organized into two main phases.
 
 ### Phase 2 — Market Replay & Trading Simulation
 
-- [ ] Implement the historical market replay engine.
+- [x] Implement the historical market replay engine.
 - [ ] Implement dynamic timeframe aggregation.
 - [ ] Implement paper trading and position management.
 - [ ] Implement Stop Loss and Take Profit.

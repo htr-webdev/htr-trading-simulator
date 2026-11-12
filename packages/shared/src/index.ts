@@ -3,3 +3,10 @@ export interface HealthResponse {
   service: string;
   timestamp: string;
 }
+
+export {
+  REPLAY_SPEEDS,
+  DEFAULT_REPLAY_SPEED,
+} from "./constants/replay.js";
+export type { ReplaySpeed, ReplayStatus, ReplayState } from "./constants/replay.js";
+export type { ReplaySessionResponse } from "./constants/replay.js";
