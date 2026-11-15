@@ -18,6 +18,8 @@ interface UsePaperTradingOptions {
   sessionId: string | null;
   /** While the replay plays, the account refreshes on an interval. */
   isPlaying: boolean;
+  /** Replay clock position; a change re-values the account. */
+  replayTime?: number | null;
 }
 
 /** Refresh interval for account valuation while the replay plays. */
@@ -40,6 +42,7 @@ interface AccountSnapshot {
 export function usePaperTrading({
   sessionId,
   isPlaying,
+  replayTime = null,
 }: UsePaperTradingOptions): UsePaperTradingResult {
   const [snapshot, setSnapshot] = useState<AccountSnapshot | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -89,7 +92,7 @@ export function usePaperTrading({
     }
 
     void refreshRef.current(sessionId);
-  }, [sessionId]);
+  }, [sessionId, replayTime]);
 
   useEffect(() => {
     if (!sessionId || !isPlaying) {

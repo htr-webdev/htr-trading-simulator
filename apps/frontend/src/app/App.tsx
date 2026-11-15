@@ -52,6 +52,7 @@ function App() {
   const trading = usePaperTrading({
     sessionId: replay.sessionId,
     isPlaying: replay.state?.status === "playing",
+    replayTime: replay.state?.currentTime ?? null,
   });
 
   const hasReplaySession = replay.sessionId !== null;
