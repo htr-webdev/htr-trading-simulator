@@ -17,19 +17,22 @@ The project aims to provide a trading terminal inspired by professional trading 
 
 All trading activities are simulated. The platform does not execute real orders or risk real funds.
 
-## Planned Features
+## Features
 
-- Historical cryptocurrency market data.
-- Interactive candlestick charts.
-- Date-based market replay.
-- Adjustable playback speed and playback controls.
-- Dynamic timeframe aggregation from historical minute data.
-- Simulated trading and position management.
+Implemented so far:
+
+- Historical cryptocurrency market data (CLI downloader, local SQLite storage).
+- Interactive candlestick charts (TradingView Lightweight Charts).
+- Date-based market replay with play/pause, single-candle stepping and 0.25x–10x playback speeds.
+- Future candles stay hidden during replay — exactly like real market conditions.
+- Dynamic timeframe aggregation: 1m to 1D charts generated from the same 1-minute data, no extra downloads.
+- Paper trading with market orders (long/short), multiple simultaneous positions, live unrealized/realized PnL, balance and equity.
+- Market Watch and a trading terminal interface (desktop and mobile layouts).
+
+Planned next:
+
 - Stop Loss and Take Profit.
 - Chart drawing tools for technical analysis.
-- Market Watch and trading terminal interface.
-
-_These features are part of the project roadmap and are being developed incrementally._
 
 ## Technology Stack
 
@@ -126,6 +129,24 @@ Check the backend health endpoint:
 http://127.0.0.1:3000/health
 ```
 
+### Using the Terminal
+
+Replay and paper trading read candles from the local database, so the
+backend needs to know where it lives:
+
+```bash
+# PowerShell
+$env:CANDLE_DATABASE_PATH = "path\to\candles.sqlite"
+npm run dev:backend
+```
+
+Then open the frontend, press **Start** in the REPLAY bar to begin a
+replay session, and use the playback controls (play/pause, step,
+speed) to move through history. Buy and Sell buttons open paper
+positions at the current replay price; the terminal panel tracks
+balance, equity, unrealized/realized PnL and lets you close positions
+at any time.
+
 ### CLI
 
 Download historical BTCUSDT candles into a local CSV file:
@@ -195,7 +216,7 @@ Development is organized into two main phases.
 
 **Development Stage:** Early Development
 
-The project is currently focused on historical market data processing: downloading, validating, and incrementally extending historical candle data, with storage and replay coming next.
+The foundation is in place: historical data downloading and storage, the trading terminal interface, candlestick charts, the market replay engine, dynamic timeframe aggregation, and paper trading with position management. Development now focuses on trade risk management (Stop Loss / Take Profit) and chart drawing tools.
 
 Features will be introduced incrementally as development progresses.
 
