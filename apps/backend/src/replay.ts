@@ -62,11 +62,15 @@ export function parseReplayConfig(config: ReplaySessionConfig): { config: Resolv
  * playback control becomes a no-op, so future candles stay hidden.
  */
 export class ReplaySession {
+  private readonly config: ResolvedReplayConfig;
   private currentTime: number;
   private speed: ReplaySpeed;
   private status: ReplayStatus;
 
-  constructor(private readonly config: ResolvedReplayConfig) {
+  constructor(config: ResolvedReplayConfig) {
+    // Copy so callers keep owning their config object; the session
+    // may mutate its own interval (see setInterval).
+    this.config = { ...config };
     this.currentTime = config.startTime;
     this.speed = config.speed ?? DEFAULT_REPLAY_SPEED;
     this.status = "paused";
@@ -111,6 +115,21 @@ export class ReplaySession {
     }
 
     this.speed = speed as ReplaySpeed;
+
+    return this.getState();
+  }
+
+  /**
+   * Switches the candle interval while keeping the replay clock, so
+   * higher timeframes are just a re-aggregation of the same moment —
+   * like a real platform, nothing restarts.
+   */
+  setInterval(interval: string): ReplayState | { error: string } {
+    if (!interval || !(interval in INTERVAL_MS)) {
+      return { error: `Invalid or missing interval. Allowed: ${Object.keys(INTERVAL_MS).join(", ")}.` };
+    }
+
+    this.config.interval = interval;
 
     return this.getState();
   }

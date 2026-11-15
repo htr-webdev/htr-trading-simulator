@@ -127,6 +127,22 @@ export class ReplayService {
     return "error" in result ? result : { sessionId, state: result };
   }
 
+  /** Switches a session's interval without moving the replay clock. */
+  changeInterval(
+    sessionId: string,
+    interval: string,
+  ): ReplaySessionResponse | { error: string } | null {
+    const entry = this.sessions.get(sessionId);
+
+    if (!entry) {
+      return null;
+    }
+
+    const result = entry.session.setInterval(interval);
+
+    return "error" in result ? result : { sessionId, state: result };
+  }
+
   /**
    * Candles revealed by the replay so far: everything from the
    * session start through the current replay time. Candles beyond

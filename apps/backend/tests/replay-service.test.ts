@@ -239,3 +239,41 @@ describe("ReplayService aggregated intervals", () => {
     });
   });
 });
+
+describe("ReplayService.changeInterval", () => {
+  it("switches interval keeping the replay clock and re-aggregated candles", () => {
+    const service = new ReplayService();
+    const database = createTestDatabase();
+    const { sessionId } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+
+    service.stepForward(sessionId);
+    service.stepForward(sessionId); // 2m
+
+    const state = service.changeInterval(sessionId, "5m");
+    expect(state).toMatchObject({ state: { interval: "5m", currentTime: START_MS + 2 * MINUTE } });
+
+    // 3 minutes of 1m data fall into the first 5m bucket only.
+    const candles = service.getCandlesUntilNow(sessionId, database) as CandleApiItem[];
+    expect(candles).toHaveLength(1);
+    expect(candles[0].time).toBe(START_MS);
+  });
+
+  it("rejects unknown intervals with an error", () => {
+    const service = new ReplayService();
+    const { sessionId } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+
+    expect(service.changeInterval(sessionId, "7m")).toEqual({
+      error: expect.stringContaining("interval"),
+    });
+  });
+});

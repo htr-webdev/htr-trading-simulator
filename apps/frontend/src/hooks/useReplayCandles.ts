@@ -5,8 +5,9 @@ import type { ChartState } from "../features/chart/ChartPanel";
 
 interface CandleSnapshot {
   sessionId: string;
-  /** Replay clock position the candles were fetched for. */
+  /** Replay clock position and interval the candles were fetched for. */
   fetchedTime: number;
+  fetchedInterval: string;
   chart: ChartState;
 }
 
@@ -17,8 +18,9 @@ interface CandleSnapshot {
  *
  * While the session is playing, the clock advances between polls and
  * each poll triggers one fetch; paused and ended sessions only
- * refetch when the clock actually changed. A snapshot from another
- * session renders as loading until the first candles arrive.
+ * refetch when the clock or the interval actually changed. A snapshot
+ * from another session renders as loading until the first candles
+ * arrive.
  */
 export function useReplayCandles(
   sessionId: string | null,
@@ -32,7 +34,8 @@ export function useReplayCandles(
       !state ||
       (snapshot !== null &&
         snapshot.sessionId === sessionId &&
-        snapshot.fetchedTime === state.currentTime)
+        snapshot.fetchedTime === state.currentTime &&
+        snapshot.fetchedInterval === state.interval)
     ) {
       return;
     }
@@ -54,7 +57,12 @@ export function useReplayCandles(
         chart = { status: "ready", candles: result.candles };
       }
 
-      setSnapshot({ sessionId, fetchedTime: state.currentTime, chart });
+      setSnapshot({
+        sessionId,
+        fetchedTime: state.currentTime,
+        fetchedInterval: state.interval,
+        chart,
+      });
     });
 
     return () => {

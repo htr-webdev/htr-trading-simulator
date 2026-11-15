@@ -50,8 +50,9 @@ function App() {
   // engine; otherwise it shows the static historical range.
   const activeChartState = replay.sessionId ? replayChartState : chartState;
 
-  // A symbol or interval switch must reach the replay engine too, so
-  // an active session restarts at the new configuration's start.
+  // A symbol switch is a different market, so an active session
+  // restarts. An interval switch only re-aggregates the same moment —
+  // the replay clock keeps its position.
   const selectSymbol = (symbol: string) => {
     setActiveSymbol(symbol);
     void replay.restart({ symbol });
@@ -59,7 +60,7 @@ function App() {
 
   const changeInterval = (interval: ChartInterval) => {
     setDesktopInterval(interval);
-    void replay.restart({ interval });
+    void replay.changeInterval(interval);
   };
 
   if (isNarrow) {

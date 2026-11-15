@@ -156,6 +156,36 @@ server.post<{ Params: { sessionId: string }; Body: Record<string, unknown> }>(
   },
 );
 
+server.post<{ Params: { sessionId: string }; Body: Record<string, unknown> }>(
+  "/replay/sessions/:sessionId/interval",
+  async (request, reply) => {
+    if (!requireSessionId(reply, request.params.sessionId)) {
+      return;
+    }
+
+    const interval = request.body?.interval;
+
+    if (typeof interval !== "string") {
+      await reply.status(400).send({ error: "Missing or invalid interval. Expected a string." });
+      return;
+    }
+
+    const result = replayService.changeInterval(request.params.sessionId, interval);
+
+    if (!result) {
+      await reply.status(404).send(REPLAY_NOT_FOUND);
+      return;
+    }
+
+    if ("error" in result) {
+      await reply.status(400).send({ error: result.error });
+      return;
+    }
+
+    return result;
+  },
+);
+
 server.get<{ Params: { sessionId: string } }>("/replay/sessions/:sessionId/candles", async (request, reply) => {
   const result = replayService.getCandlesUntilNow(request.params.sessionId, candleDatabase);
 

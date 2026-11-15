@@ -2,9 +2,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReplayState } from "@htr-trading-simulator/shared";
 import { useReplay } from "../src/hooks/useReplay";
-import { controlReplay, createReplaySession } from "../src/services/replay-service";
+import {
+  changeReplayInterval,
+  controlReplay,
+  createReplaySession,
+} from "../src/services/replay-service";
 
 vi.mock("../src/services/replay-service", () => ({
+  changeReplayInterval: vi.fn(),
   controlReplay: vi.fn(),
   createReplaySession: vi.fn(),
   fetchReplayState: vi.fn(),
@@ -13,6 +18,7 @@ vi.mock("../src/services/replay-service", () => ({
 
 const mockedCreate = vi.mocked(createReplaySession);
 const mockedControl = vi.mocked(controlReplay);
+const mockedChangeInterval = vi.mocked(changeReplayInterval);
 
 function replayState(overrides: Partial<ReplayState> = {}): ReplayState {
   return {
@@ -30,6 +36,7 @@ function replayState(overrides: Partial<ReplayState> = {}): ReplayState {
 beforeEach(() => {
   mockedCreate.mockReset();
   mockedControl.mockReset();
+  mockedChangeInterval.mockReset();
   mockedCreate.mockResolvedValue({
     status: "success",
     sessionId: "abc",
@@ -115,5 +122,42 @@ describe("useReplay", () => {
 
     expect(mockedControl).toHaveBeenCalledWith("abc", "play");
     expect(result.current.state?.status).toBe("playing");
+  });
+});
+
+describe("useReplay.changeInterval", () => {
+  it("switches the interval keeping the session and clock", async () => {
+    const { result } = renderHook(() => useReplay(baseOptions));
+
+    await act(() => result.current.start());
+    mockedChangeInterval.mockResolvedValue({
+      status: "success",
+      state: replayState({ interval: "5m", currentTime: 3_000 }),
+    });
+
+    await act(() => result.current.changeInterval("5m"));
+
+    expect(mockedChangeInterval).toHaveBeenCalledWith("abc", "5m");
+    expect(result.current.state).toMatchObject({ interval: "5m", currentTime: 3_000 });
+  });
+
+  it("reports interval errors without losing the session", async () => {
+    const { result } = renderHook(() => useReplay(baseOptions));
+
+    await act(() => result.current.start());
+    mockedChangeInterval.mockResolvedValue({ status: "error", message: "Invalid interval." });
+
+    await act(() => result.current.changeInterval("7m"));
+
+    expect(result.current.sessionId).toBe("abc");
+    expect(result.current.error).toBe("Invalid interval.");
+  });
+
+  it("is a no-op without a session", async () => {
+    const { result } = renderHook(() => useReplay(baseOptions));
+
+    await act(() => result.current.changeInterval("5m"));
+
+    expect(mockedChangeInterval).not.toHaveBeenCalled();
   });
 });

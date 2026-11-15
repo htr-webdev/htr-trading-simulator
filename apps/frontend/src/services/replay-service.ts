@@ -124,6 +124,25 @@ export async function setReplaySpeed(
 }
 
 /**
+ * Switches a session's candle interval. The replay clock keeps its
+ * position and the backend re-aggregates from 1m data — nothing
+ * restarts.
+ */
+export async function changeReplayInterval(
+  sessionId: string,
+  interval: string,
+): Promise<ReplayResult> {
+  return (await requestSession(
+    `${API_BASE_URL}/replay/sessions/${sessionId}/interval`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interval }),
+    },
+  )) as ReplayResult;
+}
+
+/**
  * Fetches the candles revealed by the replay so far. Candles beyond
  * the replay clock are never sent by the backend.
  */

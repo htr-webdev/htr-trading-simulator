@@ -68,6 +68,7 @@ function ChartPanel({ state, label }: ChartPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const lastFirstTimeRef = useRef<Time | undefined>(undefined);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -105,7 +106,17 @@ function ChartPanel({ state, label }: ChartPanelProps) {
     }));
 
     series.setData(data);
-    chartRef.current?.timeScale().fitContent();
+
+    // Fit the viewport only when the dataset origin changes (new
+    // session, symbol or interval). Appended candles must keep the
+    // user's manual zoom and pan untouched.
+    const firstTime = data[0]?.time;
+    const isFirstTimeKnown = firstTime !== undefined && firstTime !== lastFirstTimeRef.current;
+
+    if (isFirstTimeKnown) {
+      lastFirstTimeRef.current = firstTime;
+      chartRef.current?.timeScale().fitContent();
+    }
   }, [state]);
 
   return (

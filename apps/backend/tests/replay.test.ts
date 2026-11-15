@@ -126,3 +126,33 @@ describe("ReplaySession", () => {
     expect(session.getState().status).toBe("ended");
   });
 });
+
+describe("ReplaySession.setInterval", () => {
+  it("changes the interval without moving the clock", () => {
+    const session = new ReplaySession(baseConfig);
+    session.stepForward();
+
+    const state = session.setInterval("5m");
+
+    expect(state).toMatchObject({
+      interval: "5m",
+      currentTime: baseConfig.startTime + MINUTE,
+    });
+  });
+
+  it("rejects an unknown interval and keeps the current one", () => {
+    const session = new ReplaySession(baseConfig);
+
+    expect(session.setInterval("7m")).toHaveProperty("error");
+    expect(session.getState().interval).toBe("1m");
+  });
+
+  it("steps by the new interval after switching", () => {
+    const session = new ReplaySession(baseConfig);
+
+    session.setInterval("15m");
+    session.stepForward();
+
+    expect(session.getState().currentTime).toBe(baseConfig.startTime + 15 * MINUTE);
+  });
+});

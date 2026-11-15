@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { REPLAY_SPEEDS, type ReplayState, type ReplaySpeed } from "@htr-trading-simulator/shared";
 import {
+  changeReplayInterval,
   controlReplay,
   createReplaySession,
   fetchReplayState,
@@ -27,6 +28,8 @@ export interface UseReplayResult {
   start: () => Promise<void>;
   /** Restarts an active session with the given symbol/interval. */
   restart: (overrides: Partial<Pick<UseReplayOptions, "symbol" | "interval">>) => Promise<void>;
+  /** Switches a session's interval while keeping the replay clock. */
+  changeInterval: (interval: string) => Promise<void>;
   play: () => Promise<void>;
   pause: () => Promise<void>;
   step: () => Promise<void>;
@@ -198,6 +201,27 @@ export function useReplay({
     [start],
   );
 
+  const changeInterval = useCallback(
+    (interval: string) => {
+      return run(async () => {
+        if (!sessionId) {
+          return;
+        }
+
+        const result = await changeReplayInterval(sessionId, interval);
+
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
+
+        setState(result.state);
+        setError(null);
+      });
+    },
+    [run, sessionId],
+  );
+
   const pollRef = useRef(applyResult);
 
   useEffect(() => {
@@ -232,6 +256,7 @@ export function useReplay({
     speeds: REPLAY_SPEEDS,
     start,
     restart,
+    changeInterval,
     play,
     pause,
     step,
