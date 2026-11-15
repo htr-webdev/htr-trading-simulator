@@ -11,6 +11,7 @@ import { useIsNarrowViewport } from "../hooks/useIsNarrowViewport";
 import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
 import { useReplay } from "../hooks/useReplay";
 import { useReplayCandles } from "../hooks/useReplayCandles";
+import { usePaperTrading } from "../hooks/usePaperTrading";
 import ReplayControls from "../features/replay/ReplayControls";
 import MobileTerminalLayout from "./MobileTerminalLayout";
 
@@ -46,6 +47,16 @@ function App() {
 
   const replayChartState = useReplayCandles(replay.sessionId, replay.state);
 
+  // Paper trading is bound to the active replay session; orders are
+  // filled by the backend at the current replay price.
+  const trading = usePaperTrading({
+    sessionId: replay.sessionId,
+    isPlaying: replay.state?.status === "playing",
+    replayTime: replay.state?.currentTime ?? null,
+  });
+
+  const hasReplaySession = replay.sessionId !== null;
+
   // While a replay session is active the chart is fed by the replay
   // engine; otherwise it shows the static historical range.
   const activeChartState = replay.sessionId ? replayChartState : chartState;
@@ -69,6 +80,8 @@ function App() {
         symbols={INITIAL_MARKET_WATCH_SYMBOLS}
         activeSymbol={activeSymbol}
         onSymbolSelect={selectSymbol}
+        trading={trading}
+        hasSession={hasReplaySession}
       />
     );
   }
@@ -93,7 +106,7 @@ function App() {
         />
       </div>
 
-      <TerminalPanel />
+      <TerminalPanel trading={trading} hasSession={hasReplaySession} />
     </div>
   );
 }

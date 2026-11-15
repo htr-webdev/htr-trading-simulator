@@ -8,11 +8,15 @@ import MobileOrderBar from "../features/trading/MobileOrderBar";
 import PositionsTable from "../features/trading/PositionsTable";
 import ChartPanel from "../features/chart/ChartPanel";
 import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
+import type { UsePaperTradingResult } from "../hooks/usePaperTrading";
 
 interface MobileTerminalLayoutProps {
   symbols: MarketWatchSymbol[];
   activeSymbol: string;
   onSymbolSelect: (symbol: string) => void;
+  trading?: UsePaperTradingResult;
+  /** Trading is only available while a replay session is active. */
+  hasSession?: boolean;
 }
 
 /**
@@ -25,6 +29,8 @@ function MobileTerminalLayout({
   symbols,
   activeSymbol,
   onSymbolSelect,
+  trading,
+  hasSession = false,
 }: MobileTerminalLayoutProps) {
   const [activeInterval, setActiveInterval] = useState<ChartInterval>("1m");
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -73,12 +79,19 @@ function MobileTerminalLayout({
 
       {isTerminalOpen && (
         <div className="max-h-48 shrink-0 overflow-y-auto border-t border-terminal-border bg-terminal-panel">
-          <PositionsTable />
+          <PositionsTable
+            positions={trading?.account?.openPositions ?? []}
+            currentPrice={trading?.account?.markPrice ?? null}
+            onClosePosition={(id) => void trading?.closePosition(id)}
+            isBusy={trading?.isBusy ?? false}
+          />
         </div>
       )}
 
       <MobileOrderBar
         symbol={symbols.find((symbol) => symbol.symbol === activeSymbol)}
+        trading={trading}
+        hasSession={hasSession}
       />
     </div>
   );
