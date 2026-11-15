@@ -20,6 +20,7 @@ const mockedClose = vi.mocked(closePaperPosition);
 
 function accountState(overrides: Partial<PaperAccountState> = {}): PaperAccountState {
   return {
+    markPrice: 100,
     balance: 10_000,
     unrealizedPnl: 0,
     equity: 10_000,

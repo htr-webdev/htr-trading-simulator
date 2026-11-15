@@ -23,6 +23,8 @@ export interface PaperTrade {
 }
 
 export interface PaperAccountState {
+  /** Replay price the account is currently valued at. */
+  markPrice: number;
   /** Settled cash; changes only when a position closes. */
   balance: number;
   /** Unrealized PnL of all open positions at the current mark price. */

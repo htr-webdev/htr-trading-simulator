@@ -159,6 +159,7 @@ export class PaperTradingAccount {
     const unrealized = this.unrealizedPnl(markPrice);
 
     return {
+      markPrice,
       balance: this.balance,
       unrealizedPnl: unrealized,
       equity: this.balance + unrealized,
