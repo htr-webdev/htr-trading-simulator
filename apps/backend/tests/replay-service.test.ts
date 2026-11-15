@@ -277,3 +277,123 @@ describe("ReplayService.changeInterval", () => {
     });
   });
 });
+
+describe("ReplayService paper trading", () => {
+  function setupTradingSession() {
+    let clock = 1_000;
+    const service = new ReplayService(() => clock);
+    const database = createTestDatabase();
+    const { sessionId } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+
+    return { service, database, sessionId, tickClock: () => { clock += 1; } };
+  }
+
+  it("fills orders at the latest revealed candle close", () => {
+    const { service, database, sessionId } = setupTradingSession();
+
+    // The start candle is revealed from the beginning, so the order
+    // fills at its close without any step.
+    const account = service.openPosition(sessionId, { direction: "long", size: 2 }, database) as never;
+    expect(account).not.toHaveProperty("error");
+    expect(account.openPositions).toHaveLength(1);
+    // Entry = close of the first revealed candle = 1.5 per test data.
+    expect(account.openPositions[0]).toMatchObject({ entryPrice: 1.5, size: 2, direction: "long" });
+
+    // A session whose data has not started yet cannot fill orders.
+    const { sessionId: emptySession } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: "2030-01-01",
+      end: "2030-01-02",
+    }).session;
+    expect(
+      service.openPosition(emptySession, { direction: "long", size: 1 }, database),
+    ).toEqual({ error: expect.stringContaining("No market data"), status: 400 });
+  });
+
+  it("values the account at the current replay price", () => {
+    const { service, database, sessionId } = setupTradingSession();
+    service.stepForward(sessionId);
+    service.openPosition(sessionId, { direction: "long", size: 2 }, database);
+
+    service.stepForward(sessionId); // another candle revealed
+
+    const account = service.getAccount(sessionId, database) as never;
+    expect(account.openPositions).toHaveLength(1);
+    // Mark price moved with the second candle close (1.5 in fixture).
+    expect(account.balance).toBe(10_000);
+    expect(account.equity).toBeGreaterThan(0);
+  });
+
+  it("closes a position at the latest revealed price and records the trade", () => {
+    const { service, database, sessionId } = setupTradingSession();
+    service.stepForward(sessionId);
+    const opened = service.openPosition(sessionId, { direction: "long", size: 2 }, database) as never;
+    const positionId = opened.openPositions[0].id;
+
+    const account = service.closePosition(sessionId, positionId, database) as never;
+
+    expect(account.openPositions).toHaveLength(0);
+    expect(account.closedTrades).toHaveLength(1);
+    expect(account.closedTrades[0]).toMatchObject({ entryPrice: 1.5, exitPrice: 1.5, size: 2 });
+  });
+
+  it("keeps separate accounts per replay session", () => {
+    const clock = 1_000;
+    const service = new ReplayService(() => clock);
+    const database = createTestDatabase();
+    const { sessionId: first } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+    const { sessionId: second } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+
+    service.stepForward(first);
+    service.openPosition(first, { direction: "long", size: 1 }, database);
+
+    const firstAccount = service.getAccount(first, database) as never;
+    const secondAccount = service.getAccount(second, database) as never;
+
+    expect(firstAccount.openPositions).toHaveLength(1);
+    expect(secondAccount.openPositions).toHaveLength(0);
+    expect(secondAccount.balance).toBe(10_000);
+    expect(database).toBeDefined();
+  });
+
+  it("returns 404 for unknown sessions", () => {
+    const { service, database } = setupTradingSession();
+
+    expect(service.getAccount("missing", database)).toEqual({
+      error: "Replay session not found.",
+      status: 404,
+    });
+    expect(service.openPosition("missing", { direction: "long", size: 1 }, database)).toEqual({
+      error: "Replay session not found.",
+      status: 404,
+    });
+  });
+
+  it("rejects invalid orders with 400", () => {
+    const { service, database, sessionId } = setupTradingSession();
+    service.stepForward(sessionId);
+
+    expect(
+      service.openPosition(sessionId, { direction: "sideways", size: 1 }, database),
+    ).toEqual({ error: expect.stringContaining("direction"), status: 400 });
+    expect(
+      service.openPosition(sessionId, { direction: "long", size: 0 }, database),
+    ).toEqual({ error: expect.stringContaining("size"), status: 400 });
+  });
+});

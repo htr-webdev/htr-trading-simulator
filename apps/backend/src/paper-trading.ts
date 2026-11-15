@@ -1,39 +1,11 @@
-export type TradeDirection = "long" | "short";
+import { INITIAL_PAPER_BALANCE, type PaperAccountState, type PaperPosition, type PaperTrade, type TradeDirection } from "@htr-trading-simulator/shared";
 
-export interface PaperPosition {
-  id: string;
-  symbol: string;
-  direction: TradeDirection;
-  /** Position size in the base currency, e.g. BTC. */
-  size: number;
-  entryPrice: number;
-  openedAtReplayTime: number;
-}
-
-export interface PaperTrade {
-  id: string;
-  symbol: string;
-  direction: TradeDirection;
-  size: number;
-  entryPrice: number;
-  exitPrice: number;
-  realizedPnl: number;
-  openedAtReplayTime: number;
-  closedAtReplayTime: number;
-}
-
-export interface PaperAccountState {
-  /** Settled cash; changes only when a position closes. */
-  balance: number;
-  /** Unrealized PnL of all open positions at the current mark price. */
-  unrealizedPnl: number;
-  /** balance + unrealizedPnl; what the account is worth right now. */
-  equity: number;
-  /** Total PnL of closed trades. */
-  realizedPnl: number;
-  openPositions: PaperPosition[];
-  closedTrades: PaperTrade[];
-}
+export type {
+  PaperAccountState,
+  PaperPosition,
+  PaperTrade,
+  TradeDirection,
+};
 
 export interface OpenPositionInput {
   direction: TradeDirection;
@@ -45,7 +17,7 @@ export interface OpenPositionInput {
   replayTime: number;
 }
 
-const INITIAL_BALANCE = 10_000;
+const INITIAL_BALANCE = INITIAL_PAPER_BALANCE;
 
 /**
  * Paper trading account for one replay session.

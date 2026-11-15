@@ -186,6 +186,68 @@ server.post<{ Params: { sessionId: string }; Body: Record<string, unknown> }>(
   },
 );
 
+server.get<{ Params: { sessionId: string } }>("/replay/sessions/:sessionId/account", async (request, reply) => {
+  const result = replayService.getAccount(request.params.sessionId, candleDatabase);
+
+  if ("error" in result) {
+    await reply.status(result.status).send({ error: result.error });
+    return;
+  }
+
+  return result;
+});
+
+server.post<{ Params: { sessionId: string }; Body: Record<string, unknown> }>(
+  "/replay/sessions/:sessionId/orders",
+  async (request, reply) => {
+    if (!requireSessionId(reply, request.params.sessionId)) {
+      return;
+    }
+
+    const body = request.body ?? {};
+    const direction = typeof body.direction === "string" ? body.direction : undefined;
+    const size = typeof body.size === "number" ? body.size : undefined;
+
+    if (!direction || typeof size !== "number") {
+      await reply.status(400).send({
+        error: "Missing or invalid order. Expected direction (long/short) and numeric size.",
+      });
+      return;
+    }
+
+    const result = replayService.openPosition(request.params.sessionId, { direction, size }, candleDatabase);
+
+    if ("error" in result) {
+      await reply.status(result.status).send({ error: result.error });
+      return;
+    }
+
+    await reply.status(201).send(result);
+  },
+);
+
+server.post<{ Params: { sessionId: string; positionId: string } }>(
+  "/replay/sessions/:sessionId/positions/:positionId/close",
+  async (request, reply) => {
+    if (!requireSessionId(reply, request.params.sessionId)) {
+      return;
+    }
+
+    const result = replayService.closePosition(
+      request.params.sessionId,
+      request.params.positionId,
+      candleDatabase,
+    );
+
+    if ("error" in result) {
+      await reply.status(result.status).send({ error: result.error });
+      return;
+    }
+
+    return result;
+  },
+);
+
 server.get<{ Params: { sessionId: string } }>("/replay/sessions/:sessionId/candles", async (request, reply) => {
   const result = replayService.getCandlesUntilNow(request.params.sessionId, candleDatabase);
 

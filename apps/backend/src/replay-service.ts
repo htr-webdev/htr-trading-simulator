@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { CandleDatabase } from "@htr-trading-simulator/market-data";
-import type { ReplaySessionResponse, ReplayState } from "@htr-trading-simulator/shared";
+import type {
+  PaperAccountState,
+  ReplaySessionResponse,
+  ReplayState,
+  TradeDirection,
+} from "@htr-trading-simulator/shared";
 import { parseReplayConfig, ReplaySession } from "./replay.js";
+import { PaperTradingAccount } from "./paper-trading.js";
 import { getCandles, type CandleApiItem, type CandleInterval } from "./candles.js";
 
 export interface CreateReplayInput {
@@ -14,8 +20,14 @@ export interface CreateReplayInput {
 
 interface SessionEntry {
   session: ReplaySession;
+  account: PaperTradingAccount;
   /** Wall-clock time of the last visit, for catch-up advancement. */
   lastTouched: number;
+}
+
+export interface OpenOrderInput {
+  direction?: string;
+  size?: number;
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,9 +95,10 @@ export class ReplayService {
     }
 
     const session = new ReplaySession(parsed.config);
+    const account = new PaperTradingAccount(parsed.config.symbol);
     const sessionId = randomUUID();
 
-    this.sessions.set(sessionId, { session, lastTouched: this.now() });
+    this.sessions.set(sessionId, { session, account, lastTouched: this.now() });
 
     return { session: { sessionId, state: session.getState() } };
   }
@@ -166,6 +179,110 @@ export class ReplayService {
       startTime: state.startTime,
       endTime: state.currentTime,
     });
+  }
+
+  /**
+   * Latest close price revealed by the replay clock. Reads only 1m
+   * candles at or before the replay time, so future prices can never
+   * fill orders or value positions. Returns null before the first
+   * candle is revealed.
+   */
+  private latestReplayPrice(
+    entry: SessionEntry,
+    database: CandleDatabase | null,
+  ): number | null {
+    if (!database) {
+      return null;
+    }
+
+    const state: ReplayState = this.tick(entry).getState();
+    const candles = database.getCandles(state.symbol, "1m", state.startTime, state.currentTime);
+
+    if (candles.length === 0) {
+      return null;
+    }
+
+    return Number(candles[candles.length - 1].close);
+  }
+
+  /** Paper trading account snapshot valued at the current replay price. */
+  getAccount(sessionId: string, database: CandleDatabase | null): PaperAccountState | { error: string; status: 404 } {
+    const entry = this.sessions.get(sessionId);
+
+    if (!entry) {
+      return { error: "Replay session not found.", status: 404 };
+    }
+
+    const price = this.latestReplayPrice(entry, database) ?? 0;
+
+    return entry.account.state(price);
+  }
+
+  /**
+   * Opens a position at the latest revealed replay price. Orders are
+   * rejected before any candle is revealed — there is no price to
+   * fill at yet, and never a future one.
+   */
+  openPosition(
+    sessionId: string,
+    input: OpenOrderInput,
+    database: CandleDatabase | null,
+  ): PaperAccountState | { error: string; status: 400 | 404 } {
+    const entry = this.sessions.get(sessionId);
+
+    if (!entry) {
+      return { error: "Replay session not found.", status: 404 };
+    }
+
+    const state: ReplayState = this.tick(entry).getState();
+    const price = this.latestReplayPrice(entry, database);
+
+    if (price === null) {
+      return { error: "No market data revealed yet. Cannot fill orders.", status: 400 };
+    }
+
+    const direction = input.direction as TradeDirection;
+    const result = entry.account.openPosition({
+      direction,
+      size: input.size as number,
+      price,
+      symbol: state.symbol,
+      replayTime: state.currentTime,
+    });
+
+    if ("error" in result) {
+      return { error: result.error, status: 400 };
+    }
+
+    return entry.account.state(price);
+  }
+
+  /** Closes a position at the latest revealed replay price. */
+  closePosition(
+    sessionId: string,
+    positionId: string,
+    database: CandleDatabase | null,
+  ): PaperAccountState | { error: string; status: 400 | 404 } {
+    const entry = this.sessions.get(sessionId);
+
+    if (!entry) {
+      return { error: "Replay session not found.", status: 404 };
+    }
+
+    const state: ReplayState = this.tick(entry).getState();
+    const price = this.latestReplayPrice(entry, database);
+
+    if (price === null) {
+      return { error: "No market data revealed yet. Cannot fill orders.", status: 400 };
+    }
+
+    const result = entry.account.closePosition(positionId, price, state.currentTime);
+
+    if ("error" in result) {
+      return { error: result.error, status: 400 };
+    }
+
+    return entry.account.state(price);
   }
 
   /** Advances a playing session by the wall time since the last visit. */
