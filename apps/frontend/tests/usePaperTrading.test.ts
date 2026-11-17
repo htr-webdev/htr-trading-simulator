@@ -5,18 +5,21 @@ import { usePaperTrading } from "../src/hooks/usePaperTrading";
 import {
   closePaperPosition,
   fetchPaperAccount,
+  setPaperProtectiveLevels,
   submitPaperOrder,
 } from "../src/services/paper-trading-service";
 
 vi.mock("../src/services/paper-trading-service", () => ({
   closePaperPosition: vi.fn(),
   fetchPaperAccount: vi.fn(),
+  setPaperProtectiveLevels: vi.fn(),
   submitPaperOrder: vi.fn(),
 }));
 
 const mockedFetchAccount = vi.mocked(fetchPaperAccount);
 const mockedSubmit = vi.mocked(submitPaperOrder);
 const mockedClose = vi.mocked(closePaperPosition);
+const mockedSetLevels = vi.mocked(setPaperProtectiveLevels);
 
 function accountState(overrides: Partial<PaperAccountState> = {}): PaperAccountState {
   return {
@@ -35,6 +38,7 @@ beforeEach(() => {
   mockedFetchAccount.mockReset();
   mockedSubmit.mockReset();
   mockedClose.mockReset();
+  mockedSetLevels.mockReset();
   mockedFetchAccount.mockResolvedValue({ status: "success", account: accountState() });
 });
 
@@ -126,5 +130,39 @@ describe("usePaperTrading", () => {
 
     expect(mockedClose).toHaveBeenCalledWith("abc", "pos-1");
     expect(result.current.account?.realizedPnl).toBe(15);
+  });
+});
+
+describe("usePaperTrading.setProtectiveLevels", () => {
+  it("posts the levels and stores the updated account", async () => {
+    const { result } = renderHook(() =>
+      usePaperTrading({ sessionId: "abc", isPlaying: false }),
+    );
+    await waitFor(() => expect(result.current.account).not.toBeNull());
+
+    mockedSetLevels.mockResolvedValue({
+      status: "success",
+      account: accountState({ unrealizedPnl: 1 }),
+    });
+
+    await act(() =>
+      result.current.setProtectiveLevels("pos-1", { stopLoss: 95, takeProfit: null }),
+    );
+
+    expect(mockedSetLevels).toHaveBeenCalledWith("abc", "pos-1", {
+      stopLoss: 95,
+      takeProfit: null,
+    });
+    expect(result.current.account?.unrealizedPnl).toBe(1);
+  });
+
+  it("is a no-op without a session", async () => {
+    const { result } = renderHook(() =>
+      usePaperTrading({ sessionId: null, isPlaying: false }),
+    );
+
+    await act(() => result.current.setProtectiveLevels("pos-1", { stopLoss: 95 }));
+
+    expect(mockedSetLevels).not.toHaveBeenCalled();
   });
 });

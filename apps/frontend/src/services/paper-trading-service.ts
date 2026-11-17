@@ -70,3 +70,26 @@ export async function closePaperPosition(
     { method: "POST" },
   );
 }
+
+export interface ProtectiveLevelsInput {
+  /** Number to set, null to clear, undefined to leave unchanged. */
+  stopLoss?: number | null;
+  /** Number to set, null to clear, undefined to leave unchanged. */
+  takeProfit?: number | null;
+}
+
+/** Sets, edits or clears a position's stop-loss / take-profit levels. */
+export async function setPaperProtectiveLevels(
+  sessionId: string,
+  positionId: string,
+  levels: ProtectiveLevelsInput,
+): Promise<PaperAccountResult> {
+  return requestAccount(
+    `${API_BASE_URL}/replay/sessions/${sessionId}/positions/${positionId}/sl-tp`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(levels),
+    },
+  );
+}

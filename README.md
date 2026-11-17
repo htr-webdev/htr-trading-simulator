@@ -27,6 +27,7 @@ Implemented so far:
 - Future candles stay hidden during replay — exactly like real market conditions.
 - Dynamic timeframe aggregation: 1m to 1D charts generated from the same 1-minute data, no extra downloads.
 - Paper trading with market orders (long/short), multiple simultaneous positions, live unrealized/realized PnL, balance and equity.
+- Stop Loss / Take Profit per position: set, edit or clear levels from the terminal; positions close automatically when the replay hits a level, and the trade records the exit reason and execution price.
 - Market Watch and a trading terminal interface (desktop and mobile layouts).
 
 Planned next:
@@ -147,6 +148,27 @@ positions at the current replay price; the terminal panel tracks
 balance, equity, unrealized/realized PnL and lets you close positions
 at any time.
 
+### Paper Trading Execution Rules
+
+Positions are filled and valued only with candles already revealed by
+the replay clock. Stop-loss / take-profit levels follow these
+deterministic rules:
+
+- Levels are monitored candle by candle, in chronological order, over
+  each fully closed candle's high/low range. The newest revealed
+  candle (the forming one) is evaluated once the replay clock moves
+  past it.
+- A position closes exactly at its trigger price — execution is
+  pessimistic, never fills at a better price.
+- If both the stop-loss and the take-profit fall inside a single
+  candle's range, the stop-loss is assumed to hit first (the
+  conservative worst case).
+- Valid levels: for a long position, stop-loss below the entry price
+  and take-profit above it; mirrored for shorts. Levels can be set,
+  edited or cleared any time while the position is open, and every
+  closed trade records its exit reason (`manual`, `stop-loss` or
+  `take-profit`) alongside the execution price.
+
 ### CLI
 
 Download historical BTCUSDT candles into a local CSV file:
@@ -207,7 +229,7 @@ Development is organized into two main phases.
 - [x] Implement the historical market replay engine.
 - [x] Implement dynamic timeframe aggregation.
 - [x] Implement paper trading and position management.
-- [ ] Implement Stop Loss and Take Profit.
+- [x] Implement Stop Loss and Take Profit.
 - [ ] Implement chart drawing tools.
 
 ## Project Status

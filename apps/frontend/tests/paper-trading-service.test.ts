@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../src/services/candles-service";
 import {
   closePaperPosition,
   fetchPaperAccount,
+  setPaperProtectiveLevels,
   submitPaperOrder,
 } from "../src/services/paper-trading-service";
 
@@ -106,5 +107,26 @@ describe("connection errors", () => {
       status: "error",
       message: "Cannot reach the API server. Is the backend running?",
     });
+  });
+});
+
+describe("setPaperProtectiveLevels", () => {
+  it("posts the levels", async () => {
+    mockResponse(200, accountState());
+
+    const result = await setPaperProtectiveLevels("abc", "pos-1", {
+      stopLoss: 100,
+      takeProfit: null,
+    });
+
+    expect(result).toEqual({ status: "success", account: accountState() });
+    expect(fetch).toHaveBeenCalledWith(
+      `${API_BASE_URL}/replay/sessions/abc/positions/pos-1/sl-tp`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stopLoss: 100, takeProfit: null }),
+      },
+    );
   });
 });

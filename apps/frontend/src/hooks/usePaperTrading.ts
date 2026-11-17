@@ -4,6 +4,8 @@ import {
   closePaperPosition,
   fetchPaperAccount,
   submitPaperOrder,
+  setPaperProtectiveLevels,
+  type ProtectiveLevelsInput,
 } from "../services/paper-trading-service";
 
 export interface UsePaperTradingResult {
@@ -12,6 +14,7 @@ export interface UsePaperTradingResult {
   isBusy: boolean;
   submitOrder: (direction: TradeDirection, size: number) => Promise<boolean>;
   closePosition: (positionId: string) => Promise<boolean>;
+  setProtectiveLevels: (positionId: string, levels: ProtectiveLevelsInput) => Promise<boolean>;
 }
 
 interface UsePaperTradingOptions {
@@ -146,8 +149,23 @@ export function usePaperTrading({
     [run, sessionId, store],
   );
 
+  const setProtectiveLevels = useCallback(
+    (positionId: string, levels: ProtectiveLevelsInput) => {
+      if (!sessionId) {
+        return Promise.resolve(false);
+      }
+
+      return run(async () => {
+        const result = await setPaperProtectiveLevels(sessionId, positionId, levels);
+
+        store(sessionId, result);
+      }).then(() => true);
+    },
+    [run, sessionId, store],
+  );
+
   const account = snapshot !== null && snapshot.sessionId === sessionId ? snapshot.account : null;
   const error = snapshot !== null && snapshot.sessionId === sessionId ? snapshot.error : null;
 
-  return { account, error, isBusy, submitOrder, closePosition };
+  return { account, error, isBusy, submitOrder, closePosition, setProtectiveLevels };
 }

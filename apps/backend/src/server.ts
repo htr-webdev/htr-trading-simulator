@@ -248,6 +248,53 @@ server.post<{ Params: { sessionId: string; positionId: string } }>(
   },
 );
 
+server.post<{ Params: { sessionId: string; positionId: string }; Body: Record<string, unknown> }>(
+  "/replay/sessions/:sessionId/positions/:positionId/sl-tp",
+  async (request, reply) => {
+    if (!requireSessionId(reply, request.params.sessionId)) {
+      return;
+    }
+
+    const body = request.body ?? {};
+
+    const parseLevel = (value: unknown) => {
+      if (value === undefined) {
+        return undefined; // leave the level unchanged
+      }
+
+      if (value === null) {
+        return null; // clear the level
+      }
+
+      return typeof value === "number" && Number.isFinite(value) ? value : NaN;
+    };
+
+    const stopLoss = parseLevel(body.stopLoss);
+    const takeProfit = parseLevel(body.takeProfit);
+
+    if (Number.isNaN(stopLoss) || Number.isNaN(takeProfit)) {
+      await reply.status(400).send({
+        error: "Invalid SL/TP levels. Expected a positive number or null.",
+      });
+      return;
+    }
+
+    const result = replayService.setProtectiveLevels(
+      request.params.sessionId,
+      request.params.positionId,
+      { stopLoss, takeProfit },
+      candleDatabase,
+    );
+
+    if ("error" in result) {
+      await reply.status(result.status).send({ error: result.error });
+      return;
+    }
+
+    return result;
+  },
+);
+
 server.get<{ Params: { sessionId: string } }>("/replay/sessions/:sessionId/candles", async (request, reply) => {
   const result = replayService.getCandlesUntilNow(request.params.sessionId, candleDatabase);
 

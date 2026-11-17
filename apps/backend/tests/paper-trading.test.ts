@@ -163,3 +163,166 @@ describe("PaperTradingAccount.state (mark to market)", () => {
     expect(account.freeBalance).toBe(6_000);
   });
 });
+
+describe("PaperTradingAccount.setProtectiveLevels", () => {
+  function openLong() {
+    const account = new PaperTradingAccount("BTCUSDT", 10_000);
+    const position = open(account, { size: 1 }) as never as { id: string };
+    return { account, positionId: position.id };
+  }
+
+  it("sets valid levels for a long position", () => {
+    const { account, positionId } = openLong();
+
+    const result = account.setProtectiveLevels(positionId, {
+      stopLoss: 90,
+      takeProfit: 120,
+    });
+
+    expect(result).toMatchObject({ stopLoss: 90, takeProfit: 120 });
+  });
+
+  it("rejects levels on the wrong side of the entry price", () => {
+    const { account, positionId } = openLong();
+
+    expect(account.setProtectiveLevels(positionId, { stopLoss: 100 })).toHaveProperty("error");
+    expect(account.setProtectiveLevels(positionId, { takeProfit: 100 })).toHaveProperty("error");
+    expect(account.setProtectiveLevels(positionId, { stopLoss: 110 })).toHaveProperty("error");
+    expect(account.setProtectiveLevels(positionId, { takeProfit: 90 })).toHaveProperty("error");
+  });
+
+  it("mirrors validation for a short position", () => {
+    const account = new PaperTradingAccount("BTCUSDT", 10_000);
+    const position = open(account, { direction: "short" }) as never as { id: string };
+
+    expect(account.setProtectiveLevels(position.id, { stopLoss: 90 })).toHaveProperty("error");
+    expect(account.setProtectiveLevels(position.id, { takeProfit: 110 })).toHaveProperty("error");
+
+    const result = account.setProtectiveLevels(position.id, {
+      stopLoss: 110,
+      takeProfit: 90,
+    });
+
+    expect(result).toMatchObject({ stopLoss: 110, takeProfit: 90 });
+  });
+
+  it("rejects invalid values and unknown positions", () => {
+    const { account, positionId } = openLong();
+
+    expect(account.setProtectiveLevels(positionId, { stopLoss: 0 })).toHaveProperty("error");
+    expect(account.setProtectiveLevels(positionId, { stopLoss: Number.NaN })).toHaveProperty("error");
+    expect(account.setProtectiveLevels("missing", { stopLoss: 90 })).toHaveProperty("error");
+  });
+
+  it("edits and clears levels", () => {
+    const { account, positionId } = openLong();
+
+    account.setProtectiveLevels(positionId, { stopLoss: 90, takeProfit: 120 });
+    account.setProtectiveLevels(positionId, { stopLoss: 95 });
+
+    expect(account.state(ENTRY).openPositions[0]).toMatchObject({
+      stopLoss: 95,
+      takeProfit: 120,
+    });
+
+    account.setProtectiveLevels(positionId, { takeProfit: null });
+
+    expect(account.state(ENTRY).openPositions[0]).toMatchObject({
+      stopLoss: 95,
+      takeProfit: null,
+    });
+  });
+
+  it("rejects identical stop-loss and take-profit", () => {
+    const { account, positionId } = openLong();
+
+    expect(
+      account.setProtectiveLevels(positionId, { stopLoss: 95, takeProfit: 95 }),
+    ).toHaveProperty("error");
+  });
+});
+
+describe("PaperTradingAccount.checkTriggers", () => {
+  function openWithLevels(direction: "long" | "short", levels: { stopLoss?: number; takeProfit?: number }) {
+    const account = new PaperTradingAccount("BTCUSDT", 10_000);
+    const position = open(account, { direction }) as never as { id: string };
+    account.setProtectiveLevels(position.id, levels);
+
+    return { account, positionId: position.id };
+  }
+
+  it("closes a long position at its stop-loss price when the range crosses it", () => {
+    const { account } = openWithLevels("long", { stopLoss: 95 });
+
+    const closed = account.checkTriggers({ openTime: 2_000, high: 98, low: 94 });
+
+    expect(closed).toBe(1);
+    const state = account.state(94);
+    expect(state.openPositions).toHaveLength(0);
+    expect(state.closedTrades[0]).toMatchObject({
+      exitPrice: 95,
+      realizedPnl: -5,
+      exitReason: "stop-loss",
+      closedAtReplayTime: 2_000,
+    });
+  });
+
+  it("closes a long position at its take-profit price when the range crosses it", () => {
+    const { account } = openWithLevels("long", { takeProfit: 110 });
+
+    account.checkTriggers({ openTime: 2_000, high: 112, low: 101 });
+
+    const state = account.state(112);
+    expect(state.closedTrades[0]).toMatchObject({
+      exitPrice: 110,
+      realizedPnl: 10,
+      exitReason: "take-profit",
+    });
+  });
+
+  it("mirrors triggers for a short position", () => {
+    const { account } = openWithLevels("short", { stopLoss: 110 });
+
+    account.checkTriggers({ openTime: 2_000, high: 115, low: 100 });
+
+    const state = account.state(115);
+    expect(state.closedTrades[0]).toMatchObject({
+      exitPrice: 110,
+      realizedPnl: -10,
+      exitReason: "stop-loss",
+    });
+  });
+
+  it("does nothing when the range misses all levels", () => {
+    const { account } = openWithLevels("long", { stopLoss: 95, takeProfit: 110 });
+
+    expect(account.checkTriggers({ openTime: 2_000, high: 105, low: 96 })).toBe(0);
+    expect(account.state(100).openPositions).toHaveLength(1);
+  });
+
+  it("assumes the stop-loss hits first when both levels fall in one candle", () => {
+    const { account } = openWithLevels("long", { stopLoss: 95, takeProfit: 110 });
+
+    account.checkTriggers({ openTime: 2_000, high: 115, low: 90 });
+
+    const trade = account.state(115).closedTrades[0];
+
+    expect(trade).toMatchObject({ exitPrice: 95, exitReason: "stop-loss" });
+    expect(account.state(115).openPositions).toHaveLength(0);
+  });
+
+  it("keeps other positions open when only one hits its level", () => {
+    const account = new PaperTradingAccount("BTCUSDT", 10_000);
+    const a = open(account, { size: 1 }) as never as { id: string };
+    const b = open(account, { size: 1 }) as never as { id: string };
+    account.setProtectiveLevels(a.id, { stopLoss: 95 });
+    account.setProtectiveLevels(b.id, { stopLoss: 90 });
+
+    account.checkTriggers({ openTime: 2_000, high: 99, low: 94 });
+
+    const state = account.state(100);
+    expect(state.openPositions).toHaveLength(1);
+    expect(state.openPositions[0].id).toBe(b.id);
+    expect(state.closedTrades).toHaveLength(1);
+  });
+});

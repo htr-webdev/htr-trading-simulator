@@ -14,6 +14,7 @@ export { INTERVAL_MS } from "./constants/intervals.js";
 export type { CandleIntervalKey } from "./constants/intervals.js";
 export type {
   TradeDirection,
+  ExitReason,
   PaperPosition,
   PaperTrade,
   PaperAccountState,

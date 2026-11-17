@@ -7,7 +7,7 @@ import type {
   TradeDirection,
 } from "@htr-trading-simulator/shared";
 import { parseReplayConfig, ReplaySession } from "./replay.js";
-import { PaperTradingAccount } from "./paper-trading.js";
+import { PaperTradingAccount, type ProtectiveLevels } from "./paper-trading.js";
 import { getCandles, type CandleApiItem, type CandleInterval } from "./candles.js";
 
 export interface CreateReplayInput {
@@ -23,6 +23,11 @@ interface SessionEntry {
   account: PaperTradingAccount;
   /** Wall-clock time of the last visit, for catch-up advancement. */
   lastTouched: number;
+  /**
+   * Open time of the last replay candle whose high/low range has been
+   * checked against stop-loss / take-profit levels.
+   */
+  lastCheckedCandleTime: number;
 }
 
 export interface OpenOrderInput {
@@ -98,7 +103,12 @@ export class ReplayService {
     const account = new PaperTradingAccount(parsed.config.symbol);
     const sessionId = randomUUID();
 
-    this.sessions.set(sessionId, { session, account, lastTouched: this.now() });
+    this.sessions.set(sessionId, {
+      session,
+      account,
+      lastTouched: this.now(),
+      lastCheckedCandleTime: startTime - 1,
+    });
 
     return { session: { sessionId, state: session.getState() } };
   }
@@ -205,6 +215,43 @@ export class ReplayService {
     return Number(candles[candles.length - 1].close);
   }
 
+  /**
+   * Runs stop-loss / take-profit trigger checks over every replay
+   * candle revealed since the last visit. Only fully closed candles
+   * are evaluated (open time before the replay clock); the newest
+   * revealed candle is the forming one and gets checked once the
+   * clock moves past it. Closes are recorded with the trigger price
+   * and exit reason (see PaperTradingAccount execution rules).
+   */
+  private processTriggers(entry: SessionEntry, database: CandleDatabase | null): void {
+    if (!database) {
+      return;
+    }
+
+    const state: ReplayState = this.tick(entry).getState();
+
+    if (state.currentTime <= entry.lastCheckedCandleTime + 1) {
+      return;
+    }
+
+    const candles = database.getCandles(
+      state.symbol,
+      "1m",
+      entry.lastCheckedCandleTime + 1,
+      state.currentTime - 1,
+    );
+
+    for (const candle of candles) {
+      entry.account.checkTriggers({
+        openTime: candle.openTime,
+        high: Number(candle.high),
+        low: Number(candle.low),
+      });
+
+      entry.lastCheckedCandleTime = candle.openTime;
+    }
+  }
+
   /** Paper trading account snapshot valued at the current replay price. */
   getAccount(sessionId: string, database: CandleDatabase | null): PaperAccountState | { error: string; status: 404 } {
     const entry = this.sessions.get(sessionId);
@@ -212,6 +259,8 @@ export class ReplayService {
     if (!entry) {
       return { error: "Replay session not found.", status: 404 };
     }
+
+    this.processTriggers(entry, database);
 
     const price = this.latestReplayPrice(entry, database) ?? 0;
 
@@ -233,6 +282,8 @@ export class ReplayService {
     if (!entry) {
       return { error: "Replay session not found.", status: 404 };
     }
+
+    this.processTriggers(entry, database);
 
     const state: ReplayState = this.tick(entry).getState();
     const price = this.latestReplayPrice(entry, database);
@@ -269,6 +320,8 @@ export class ReplayService {
       return { error: "Replay session not found.", status: 404 };
     }
 
+    this.processTriggers(entry, database);
+
     const state: ReplayState = this.tick(entry).getState();
     const price = this.latestReplayPrice(entry, database);
 
@@ -281,6 +334,36 @@ export class ReplayService {
     if ("error" in result) {
       return { error: result.error, status: 400 };
     }
+
+    return entry.account.state(price);
+  }
+
+  /**
+   * Sets, edits or clears a position's stop-loss / take-profit
+   * levels. Triggers are processed first so a level can only be set
+   * on a still-open position.
+   */
+  setProtectiveLevels(
+    sessionId: string,
+    positionId: string,
+    levels: ProtectiveLevels,
+    database: CandleDatabase | null,
+  ): PaperAccountState | { error: string; status: 400 | 404 } {
+    const entry = this.sessions.get(sessionId);
+
+    if (!entry) {
+      return { error: "Replay session not found.", status: 404 };
+    }
+
+    this.processTriggers(entry, database);
+
+    const result = entry.account.setProtectiveLevels(positionId, levels);
+
+    if ("error" in result) {
+      return { error: result.error, status: 400 };
+    }
+
+    const price = this.latestReplayPrice(entry, database) ?? 0;
 
     return entry.account.state(price);
   }

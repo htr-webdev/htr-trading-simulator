@@ -1,5 +1,8 @@
 export type TradeDirection = "long" | "short";
 
+/** Why a paper position was closed. */
+export type ExitReason = "manual" | "stop-loss" | "take-profit";
+
 export interface PaperPosition {
   id: string;
   symbol: string;
@@ -8,6 +11,10 @@ export interface PaperPosition {
   size: number;
   entryPrice: number;
   openedAtReplayTime: number;
+  /** Trigger price that closes the position at a loss; null = unset. */
+  stopLoss: number | null;
+  /** Trigger price that closes the position at a profit; null = unset. */
+  takeProfit: number | null;
 }
 
 export interface PaperTrade {
@@ -20,6 +27,7 @@ export interface PaperTrade {
   realizedPnl: number;
   openedAtReplayTime: number;
   closedAtReplayTime: number;
+  exitReason: ExitReason;
 }
 
 export interface PaperAccountState {

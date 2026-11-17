@@ -397,3 +397,120 @@ describe("ReplayService paper trading", () => {
     ).toEqual({ error: expect.stringContaining("size"), status: 400 });
   });
 });
+
+describe("ReplayService stop-loss / take-profit", () => {
+  function setupTradingSession() {
+    let clock = 1_000;
+    const service = new ReplayService(() => clock);
+    const database = createTestDatabase();
+    const { sessionId } = service.create({
+      symbol: "BTCUSDT",
+      interval: "1m",
+      start: START_DATE,
+      end: END_DATE,
+    }).session;
+
+    return { service, database, sessionId, advanceClock: () => { clock += 1; } };
+  }
+
+  it("auto-closes a long position when a revealed candle hits the stop-loss", () => {
+    const { service, database, sessionId } = setupTradingSession();
+
+    // Candle 0 opens the session; candle 1 spikes to 3.0 and drops to 0.6.
+    database.insertCandles("BTCUSDT", "1m", [
+      candle(START_MS, "1.5"),
+      {
+        openTime: START_MS + MINUTE,
+        open: "1.5",
+        high: "3.0",
+        low: "0.6",
+        close: "1.0",
+        volume: "10",
+        closeTime: START_MS + MINUTE + MINUTE - 1,
+      },
+    ]);
+
+    service.openPosition(sessionId, { direction: "long", size: 1 }, database);
+
+    const set = service.setProtectiveLevels(
+      sessionId,
+      "pos-1",
+      { stopLoss: 0.9 },
+      database,
+    );
+    expect(set).not.toHaveProperty("error");
+
+    // Step onto candle 1, then ask again — the forming candle is not
+    // evaluated until the clock moves past it.
+    service.stepForward(sessionId);
+    service.stepForward(sessionId); // now candle 1 is fully closed
+
+    const account = service.getAccount(sessionId, database) as never;
+
+    expect(account.openPositions).toHaveLength(0);
+    expect(account.closedTrades).toHaveLength(1);
+    expect(account.closedTrades[0]).toMatchObject({
+      exitPrice: 0.9,
+      exitReason: "stop-loss",
+      closedAtReplayTime: START_MS,
+    });
+    expect(account.balance).toBeCloseTo(10_000 - 0.6, 5);
+  });
+
+  it("auto-closes a long position at its take-profit", () => {
+    const { service, database, sessionId } = setupTradingSession();
+
+    database.insertCandles("BTCUSDT", "1m", [
+      candle(START_MS, "1.5"),
+      {
+        openTime: START_MS + MINUTE,
+        open: "1.5",
+        high: "3.0",
+        low: "1.4",
+        close: "2.5",
+        volume: "10",
+        closeTime: START_MS + MINUTE + MINUTE - 1,
+      },
+    ]);
+
+    service.openPosition(sessionId, { direction: "long", size: 1 }, database);
+    service.setProtectiveLevels(sessionId, "pos-1", { takeProfit: 2.0 }, database);
+
+    service.stepForward(sessionId);
+    service.stepForward(sessionId);
+
+    const account = service.getAccount(sessionId, database) as never;
+
+    expect(account.openPositions).toHaveLength(0);
+    expect(account.closedTrades[0]).toMatchObject({
+      exitPrice: 2.0,
+      exitReason: "take-profit",
+    });
+  });
+
+  it("validates levels against the position side", () => {
+    const { service, database, sessionId } = setupTradingSession();
+
+    service.openPosition(sessionId, { direction: "long", size: 1 }, database);
+
+    expect(
+      service.setProtectiveLevels(sessionId, "pos-1", { stopLoss: 5 }, database),
+    ).toEqual({ error: expect.stringContaining("below the entry"), status: 400 });
+    expect(
+      service.setProtectiveLevels(sessionId, "missing", { stopLoss: 0.9 }, database),
+    ).toEqual({ error: "Position not found.", status: 400 });
+  });
+
+  it("leaves levels unchanged when not mentioned and clears on null", () => {
+    const { service, database, sessionId } = setupTradingSession();
+
+    service.openPosition(sessionId, { direction: "long", size: 1 }, database);
+    service.setProtectiveLevels(sessionId, "pos-1", { stopLoss: 0.9 }, database);
+
+    let state = service.setProtectiveLevels(sessionId, "pos-1", {}, database) as never;
+    expect(state.openPositions[0]).toMatchObject({ stopLoss: 0.9, takeProfit: null });
+
+    state = service.setProtectiveLevels(sessionId, "pos-1", { stopLoss: null }, database) as never;
+    expect(state.openPositions[0]).toMatchObject({ stopLoss: null, takeProfit: null });
+  });
+});

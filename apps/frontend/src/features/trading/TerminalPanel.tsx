@@ -90,6 +90,9 @@ function TerminalPanel({
             positions={account?.openPositions ?? []}
             currentPrice={account?.markPrice ?? null}
             onClosePosition={(id) => void trading?.closePosition(id)}
+            onSetProtectiveLevels={(id, levels) =>
+              void trading?.setProtectiveLevels(id, levels)
+            }
             isBusy={trading?.isBusy ?? false}
           />
         </div>

@@ -45,6 +45,7 @@ describe("TerminalPanel paper trading", () => {
       isBusy: false,
       submitOrder: noop,
       closePosition: noop,
+      setProtectiveLevels: noop,
       ...overrides,
     };
   }
