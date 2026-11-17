@@ -1,11 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ToolbarPanel from "../src/components/layout/ToolbarPanel";
-import {
-  CHART_INTERVALS,
-  INTERVAL_LABELS,
-  type ChartInterval,
-} from "../src/components/layout/chart-intervals";
+import { CHART_INTERVALS, type ChartInterval } from "../src/components/layout/chart-intervals";
 
 const INTERVAL_LABELS: Record<ChartInterval, string> = {
   "1m": "M1",
@@ -50,10 +46,59 @@ describe("ToolbarPanel", () => {
     expect(onIntervalChange).toHaveBeenCalledWith("4h");
   });
 
-  it("keeps placeholder actions disabled", () => {
+  it("keeps the settings placeholder disabled", () => {
     render(<ToolbarPanel />);
 
-    expect(screen.getByRole("button", { name: "Drawings" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Settings" })).toBeDisabled();
+  });
+
+  it("renders every drawing tool", () => {
+    render(<ToolbarPanel />);
+
+    expect(screen.getByTestId("drawing-tools")).toBeInTheDocument();
+    expect(screen.getByTestId("drawing-tool-trend")).toBeInTheDocument();
+    expect(screen.getByTestId("drawing-tool-horizontal")).toBeInTheDocument();
+    expect(screen.getByTestId("drawing-tool-vertical")).toBeInTheDocument();
+    expect(screen.getByTestId("drawing-tool-rectangle")).toBeInTheDocument();
+    expect(screen.getByTestId("drawing-tool-select")).toBeInTheDocument();
+  });
+
+  it("no drawing tool is active by default", () => {
+    render(<ToolbarPanel />);
+
+    for (const testid of [
+      "drawing-tool-trend",
+      "drawing-tool-horizontal",
+      "drawing-tool-vertical",
+      "drawing-tool-rectangle",
+      "drawing-tool-select",
+    ]) {
+      expect(screen.getByTestId(testid)).toHaveAttribute("aria-pressed", "false");
+    }
+  });
+
+  it("toggles a drawing tool on and off via the parent state", () => {
+    const onDrawingToolChange = vi.fn();
+
+    const { rerender } = render(
+      <ToolbarPanel onDrawingToolChange={onDrawingToolChange} />,
+    );
+
+    fireEvent.click(screen.getByTestId("drawing-tool-trend"));
+
+    expect(onDrawingToolChange).toHaveBeenCalledWith("trend");
+
+    // The parent applies the change; clicking the now-active tool releases it.
+    rerender(<ToolbarPanel drawingTool="trend" onDrawingToolChange={onDrawingToolChange} />);
+    fireEvent.click(screen.getByTestId("drawing-tool-trend"));
+
+    expect(onDrawingToolChange).toHaveBeenCalledWith(null);
+  });
+
+  it("marks the tool passed from the parent as active", () => {
+    render(<ToolbarPanel drawingTool="horizontal" />);
+
+    expect(screen.getByTestId("drawing-tool-horizontal")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("drawing-tool-trend")).toHaveAttribute("aria-pressed", "false");
   });
 });

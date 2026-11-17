@@ -8,6 +8,8 @@ import {
   type Time,
 } from "lightweight-charts";
 import { CHART_THEME } from "./chart-theme";
+import ChartDrawingOverlay from "./ChartDrawingOverlay";
+import type { ChartDrawing, DrawingTool } from "./drawings-model";
 
 export interface ChartCandle {
   time: number;
@@ -27,6 +29,14 @@ interface ChartPanelProps {
   state: ChartState;
   /** Shown in the chart header, e.g. "BTCUSDT — M1". */
   label?: string;
+  /** Drawings for the current symbol + timeframe. */
+  drawings?: ChartDrawing[];
+  /** Active drawing tool; null disables drawing interactions. */
+  drawingTool?: DrawingTool | null;
+  selectedDrawingId?: string | null;
+  onDrawingAdd?: (type: Exclude<DrawingTool, "select">, points: ChartDrawing["points"]) => void;
+  onDrawingSelect?: (id: string | null) => void;
+  onDrawingDelete?: (id: string) => void;
 }
 
 const CHART_OPTIONS = {
@@ -64,7 +74,16 @@ function stateOverlay(state: ChartState) {
  * candles, with loading, empty and error overlays for every other
  * data state.
  */
-function ChartPanel({ state, label }: ChartPanelProps) {
+function ChartPanel({
+  state,
+  label,
+  drawings = [],
+  drawingTool = null,
+  selectedDrawingId = null,
+  onDrawingAdd,
+  onDrawingSelect,
+  onDrawingDelete,
+}: ChartPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -138,8 +157,21 @@ function ChartPanel({ state, label }: ChartPanelProps) {
       <div
         ref={containerRef}
         data-testid="chart-container"
-        className="min-h-0 w-full flex-1"
-      />
+        className="relative min-h-0 w-full flex-1"
+      >
+        {state.status === "ready" && onDrawingAdd && onDrawingSelect && onDrawingDelete && (
+          <ChartDrawingOverlay
+            chartRef={chartRef}
+            seriesRef={seriesRef}
+            drawings={drawings}
+            activeTool={drawingTool}
+            selectedId={selectedDrawingId}
+            onDrawingAdd={onDrawingAdd}
+            onDrawingSelect={onDrawingSelect}
+            onDrawingDelete={onDrawingDelete}
+          />
+        )}
+      </div>
 
       {state.status !== "ready" && (
         <div

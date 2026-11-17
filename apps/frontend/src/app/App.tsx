@@ -12,6 +12,7 @@ import { INITIAL_DATE_RANGE, useCandles } from "../hooks/useCandles";
 import { useReplay } from "../hooks/useReplay";
 import { useReplayCandles } from "../hooks/useReplayCandles";
 import { usePaperTrading } from "../hooks/usePaperTrading";
+import { useDrawings } from "../hooks/useDrawings";
 import ReplayControls from "../features/replay/ReplayControls";
 import MobileTerminalLayout from "./MobileTerminalLayout";
 
@@ -57,6 +58,9 @@ function App() {
 
   const hasReplaySession = replay.sessionId !== null;
 
+  // Chart drawings are persisted per symbol and timeframe.
+  const drawings = useDrawings(activeSymbol, desktopInterval);
+
   // While a replay session is active the chart is fed by the replay
   // engine; otherwise it shows the static historical range.
   const activeChartState = replay.sessionId ? replayChartState : chartState;
@@ -91,6 +95,8 @@ function App() {
       <ToolbarPanel
         selectedInterval={desktopInterval}
         onIntervalChange={changeInterval}
+        drawingTool={drawings.activeTool}
+        onDrawingToolChange={drawings.setActiveTool}
       />
 
       <ReplayControls replay={replay} interval={desktopInterval} />
@@ -103,6 +109,12 @@ function App() {
         <ChartPanel
           state={activeChartState}
           label={`${activeSymbol} — ${desktopInterval.toUpperCase()}`}
+          drawings={drawings.drawings}
+          drawingTool={drawings.activeTool}
+          selectedDrawingId={drawings.selectedId}
+          onDrawingAdd={drawings.addDrawing}
+          onDrawingSelect={drawings.selectDrawing}
+          onDrawingDelete={drawings.removeDrawing}
         />
       </div>
 

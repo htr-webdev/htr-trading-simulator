@@ -29,11 +29,11 @@ Implemented so far:
 - Paper trading with market orders (long/short), multiple simultaneous positions, live unrealized/realized PnL, balance and equity.
 - Stop Loss / Take Profit per position: set, edit or clear levels from the terminal; positions close automatically when the replay hits a level, and the trade records the exit reason and execution price.
 - Market Watch and a trading terminal interface (desktop and mobile layouts).
+- Chart drawing tools: trend lines, horizontal and vertical lines and rectangles; drawings are saved locally per symbol and timeframe and survive reloads.
 
 Planned next:
 
-- Stop Loss and Take Profit.
-- Chart drawing tools for technical analysis.
+- Strategy indicators and multi-chart layout ideas.
 
 ## Technology Stack
 
@@ -169,6 +169,17 @@ deterministic rules:
   closed trade records its exit reason (`manual`, `stop-loss` or
   `take-profit`) alongside the execution price.
 
+### Chart Drawing Tools
+
+The desktop toolbar has a drawing tool group: **Trend**, **H-Line**,
+**V-Line**, **Rect** and **Select**. Tools are click-to-use (click the
+active tool again to release it); trend lines and rectangles take two
+clicks, horizontal and vertical lines one. Drawings are rendered on a
+canvas overlay pinned to price/time, so they follow zoom and pan, are
+stored in the browser's localStorage under their symbol and timeframe,
+and survive reloads. Select a drawing with the Select tool (or without
+any tool) and press **Delete** to remove it.
+
 ### CLI
 
 Download historical BTCUSDT candles into a local CSV file:
@@ -230,7 +241,7 @@ Development is organized into two main phases.
 - [x] Implement dynamic timeframe aggregation.
 - [x] Implement paper trading and position management.
 - [x] Implement Stop Loss and Take Profit.
-- [ ] Implement chart drawing tools.
+- [x] Implement chart drawing tools.
 
 ## Project Status
 

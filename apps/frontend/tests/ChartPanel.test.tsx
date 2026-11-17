@@ -1,19 +1,41 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { IChartApi, ISeriesApi } from "lightweight-charts";
 
 // jsdom has no canvas support, so the chart library is mocked and the
-// tests focus on the React wiring: container lifecycle and data updates.
+// tests focus on the React wiring: container lifecycle, data updates
+// and the drawing overlay interactions.
 const setData = vi.fn();
 const fitContent = vi.fn();
 const remove = vi.fn();
+const subscribeVisibleTimeRangeChange = vi.fn();
+const unsubscribeVisibleTimeRangeChange = vi.fn();
+// Deterministic pixel mapping for the drawing overlay:
+// time 1 -> x 100, time 2 -> x 200; price 100 -> y 50, price 200 -> y 150.
+const timeToCoordinate = vi.fn((time: number) => (time === 1 ? 100 : time === 2 ? 200 : null));
+const coordinateToTime = vi.fn((x: number) => (x < 150 ? 1 : x <= 300 ? 2 : null));
+const priceToCoordinate = vi.fn((price: number) => (price === 100 ? 50 : price === 200 ? 150 : null));
+const coordinateToPrice = vi.fn((y: number) => (y < 100 ? 100 : y <= 200 ? 200 : null));
 
 vi.mock("lightweight-charts", () => ({
   CandlestickSeries: { type: () => "candlestick" },
   createChart: vi.fn(() => {
     const chart = {
-      addSeries: vi.fn(() => ({ setData }) as unknown as ISeriesApi<"Candlestick">),
-      timeScale: vi.fn(() => ({ fitContent })),
+      addSeries: vi.fn(
+        () =>
+          ({
+            setData,
+            priceToCoordinate,
+            coordinateToPrice,
+          }) as unknown as ISeriesApi<"Candlestick">,
+      ),
+      timeScale: vi.fn(() => ({
+        fitContent,
+        subscribeVisibleTimeRangeChange,
+        unsubscribeVisibleTimeRangeChange,
+        timeToCoordinate,
+        coordinateToTime,
+      })),
       remove,
     };
 
@@ -115,5 +137,127 @@ describe("ChartPanel", () => {
     expect(CHART_THEME.handleScale.pinch).toBe(true);
     expect(CHART_THEME.handleScroll.horzTouchDrag).toBe(true);
     expect(CHART_THEME.handleScroll.vertTouchDrag).toBe(false);
+  });
+});
+
+describe("ChartPanel drawing overlay", () => {
+  function drawingProps() {
+    return {
+      drawings: [],
+      drawingTool: null,
+      selectedDrawingId: null,
+      onDrawingAdd: vi.fn(),
+      onDrawingSelect: vi.fn(),
+      onDrawingDelete: vi.fn(),
+    };
+  }
+
+  function clickCanvas(clientX: number, clientY: number) {
+    const canvas = screen.getByTestId("chart-drawing-overlay");
+
+    fireEvent.click(canvas, { clientX, clientY, bubbles: true });
+  }
+
+  it("does not render the overlay without drawing handlers", () => {
+    render(<ChartPanel state={READY_STATE} />);
+
+    expect(screen.queryByTestId("chart-drawing-overlay")).toBeNull();
+  });
+
+  it("renders the overlay over a ready chart", () => {
+    render(<ChartPanel state={READY_STATE} {...drawingProps()} />);
+
+    expect(screen.getByTestId("chart-drawing-overlay")).toBeInTheDocument();
+  });
+
+  it("captures clicks when a tool is active and adds a horizontal line", () => {
+    const { onDrawingAdd } = drawingProps();
+    const props = { ...drawingProps(), drawingTool: "horizontal" as const, onDrawingAdd };
+
+    render(<ChartPanel state={READY_STATE} {...props} />);
+
+    clickCanvas(120, 60);
+
+    expect(onDrawingAdd).toHaveBeenCalledWith("horizontal", [{ time: 1, price: 100 }]);
+  });
+
+  it("adds a vertical line from one click", () => {
+    const { onDrawingAdd } = drawingProps();
+    const props = { ...drawingProps(), drawingTool: "vertical" as const, onDrawingAdd };
+
+    render(<ChartPanel state={READY_STATE} {...props} />);
+
+    clickCanvas(200, 120);
+
+    expect(onDrawingAdd).toHaveBeenCalledWith("vertical", [{ time: 2, price: 200 }]);
+  });
+
+  it("builds a trend line from two clicks", () => {
+    const { onDrawingAdd } = drawingProps();
+    const props = { ...drawingProps(), drawingTool: "trend" as const, onDrawingAdd };
+
+    render(<ChartPanel state={READY_STATE} {...props} />);
+
+    clickCanvas(100, 50);
+    clickCanvas(200, 150);
+
+    expect(onDrawingAdd).toHaveBeenCalledWith("trend", [
+      { time: 1, price: 100 },
+      { time: 2, price: 200 },
+    ]);
+  });
+
+  it("builds a rectangle from two clicks", () => {
+    const { onDrawingAdd } = drawingProps();
+    const props = { ...drawingProps(), drawingTool: "rectangle" as const, onDrawingAdd };
+
+    render(<ChartPanel state={READY_STATE} {...props} />);
+
+    clickCanvas(100, 50);
+    clickCanvas(200, 150);
+
+    expect(onDrawingAdd).toHaveBeenCalledWith("rectangle", [
+      { time: 1, price: 100 },
+      { time: 2, price: 200 },
+    ]);
+  });
+
+  it("selects a drawing with the select tool", () => {
+    const { onDrawingSelect } = drawingProps();
+    const props = {
+      ...drawingProps(),
+      drawingTool: "select" as const,
+      onDrawingSelect,
+      drawings: [
+        {
+          id: "drawing-1",
+          type: "horizontal" as const,
+          symbol: "BTCUSDT",
+          interval: "1m",
+          points: [{ time: 1, price: 100 }],
+        },
+      ],
+    };
+
+    render(<ChartPanel state={READY_STATE} {...props} />);
+
+    // y = 60 is 10px from the horizontal line at y = 50 -> no hit.
+    clickCanvas(120, 60);
+    expect(onDrawingSelect).toHaveBeenLastCalledWith(null);
+
+    // y = 54 is within the 6px threshold -> selects it.
+    clickCanvas(120, 54);
+    expect(onDrawingSelect).toHaveBeenLastCalledWith("drawing-1");
+  });
+
+  it("deletes the selected drawing with the Delete key", () => {
+    const { onDrawingDelete } = drawingProps();
+    const props = { ...drawingProps(), selectedDrawingId: "drawing-1", onDrawingDelete };
+
+    render(<ChartPanel state={READY_STATE} {...props} />);
+
+    fireEvent.keyDown(window, { key: "Delete" });
+
+    expect(onDrawingDelete).toHaveBeenCalledWith("drawing-1");
   });
 });
